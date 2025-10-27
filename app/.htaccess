@@ -1,6 +1,21 @@
-<IfModule authz_core_module>
-	Require all denied
+<IfModule authz_core_module> Require all denied </IfModule>
+<IfModule !authz_core_module> Deny from all </IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /kongan-pb/
+    
+    # Handle Angular and other client-side routes
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php/$1 [QSA,L]
 </IfModule>
-<IfModule !authz_core_module>
-	Deny from all
-</IfModule>
+
+# Disable directory browsing
+Options All -Indexes
+
+# Prevent access to sensitive files
+<Files "*.ini">
+    Order allow,deny
+    Deny from all
+</Files>

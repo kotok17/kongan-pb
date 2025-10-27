@@ -3,9 +3,9 @@
 
 namespace App\Filters;
 
+use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
-use CodeIgniter\Filters\FilterInterface;
 
 class AdminFilter implements FilterInterface
 {
@@ -13,12 +13,14 @@ class AdminFilter implements FilterInterface
   {
     // Cek apakah user sudah login
     if (!session()->get('logged_in')) {
-      return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu!');
+      session()->setFlashdata('error', 'Anda harus login terlebih dahulu!');
+      return redirect()->to('/login');
     }
 
     // Cek apakah user adalah admin
     if (session()->get('role') !== 'admin') {
-      return redirect()->to('/login')->with('error', 'Akses ditolak! Anda bukan admin.');
+      session()->setFlashdata('error', 'Akses ditolak! Hanya admin yang diizinkan.');
+      return redirect()->back();
     }
   }
 

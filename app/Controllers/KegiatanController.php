@@ -2,429 +2,437 @@
 
 namespace App\Controllers;
 
-use App\Models\AnggotaModel;
 use App\Models\KegiatanModel;
-use App\Models\KonganModel; // Tambahkan model kongan
-use Config\Services;
+use App\Models\AnggotaModel;
 
 class KegiatanController extends BaseController
 {
+  protected $kegiatanModel;
+  protected $anggotaModel;
+
+  public function __construct()
+  {
+    $this->kegiatanModel = new KegiatanModel();
+    $this->anggotaModel = new AnggotaModel();
+  }
+
   public function index()
   {
+    // TAMBAHKAN PENGECEKAN SESSION DI AWAL
     if (!session()->get('logged_in')) {
-      return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu!');
+      return redirect()->to('/login')
+        ->with('error', 'Session expired, silakan login ulang');
     }
 
-    if (session()->get('role') !== 'admin') {
-      return redirect()->to('/login')->with('error', 'Akses ditolak!');
+    // Cek role untuk admin
+    $role = session()->get('role');
+    $isAdmin = ($role === 'admin');
+    $idAnggota = session()->get('id_anggota');
+
+    // Debug session data (hapus setelah testing)
+    // log_message('debug', 'User role: ' . $role . ', ID Anggota: ' . $idAnggota);
+
+    if ($isAdmin) {
+      // Admin bisa lihat semua kegiatan
+      $kegiatan = $this->kegiatanModel
+        ->select('kegiatan.*, anggota.nama_anggota, 
+                         COUNT(kegiatan_detail.id_detail_kegiatan) as total_peserta,
+                         COALESCE(SUM(kegiatan_detail.jumlah), 0) as total_uang')
+        ->join('anggota', 'anggota.id_anggota = kegiatan.id_anggota')
+        ->join('kegiatan_detail', 'kegiatan_detail.id_kegiatan = kegiatan.id_kegiatan', 'left')
+        ->groupBy('kegiatan.id_kegiatan')
+        ->orderBy('kegiatan.tanggal_kegiatan', 'DESC')
+        ->findAll();
+    } else {
+      // Pastikan anggota punya id_anggota
+      if (empty($idAnggota)) {
+        session()->setFlashdata('error', 'Data anggota tidak ditemukan, silakan login ulang');
+        return redirect()->to('/logout');
+      }
+
+      // Anggota hanya lihat kegiatan miliknya
+      $kegiatan = $this->kegiatanModel
+        ->select('kegiatan.*, anggota.nama_anggota, 
+                         COUNT(kegiatan_detail.id_detail_kegiatan) as total_peserta,
+                         COALESCE(SUM(kegiatan_detail.jumlah), 0) as total_uang')
+        ->join('anggota', 'anggota.id_anggota = kegiatan.id_anggota')
+        ->join('kegiatan_detail', 'kegiatan_detail.id_kegiatan = kegiatan.id_kegiatan', 'left')
+        ->where('kegiatan.id_anggota', $idAnggota)
+        ->groupBy('kegiatan.id_kegiatan')
+        ->orderBy('kegiatan.tanggal_kegiatan', 'DESC')
+        ->findAll();
     }
 
-    $kegiatanModel = new KegiatanModel();
-    $data['kegiatan'] = $kegiatanModel->getKegiatanWithAnggota();
-    $data['anggota'] = (new AnggotaModel())->findAll();
+    // Ambil semua anggota untuk dropdown (hanya untuk admin)
+    $anggota = [];
+    if ($isAdmin) {
+      $anggota = $this->anggotaModel->findAll();
+    }
+
+    $data = [
+      'title' => 'Kelola Kegiatan',
+      'kegiatan' => $kegiatan,
+      'anggota' => $anggota,
+      'is_admin' => $isAdmin,
+      'role' => $role,
+      'username' => session()->get('username'),
+      'nama_anggota' => session()->get('nama_anggota')
+    ];
+
     return view('kegiatan/index', $data);
+  }
+
+  // TAMBAHKAN METHOD INI UNTUK DEBUG
+  public function debug_session()
+  {
+    // Method untuk debug session (hapus di production)
+    $sessionData = [
+      'logged_in' => session()->get('logged_in'),
+      'role' => session()->get('role'),
+      'username' => session()->get('username'),
+      'id_anggota' => session()->get('id_anggota'),
+      'nama_anggota' => session()->get('nama_anggota'),
+      'all_session' => session()->get()
+    ];
+
+    return $this->response->setJSON($sessionData);
   }
 
   public function tambah_kegiatan()
   {
-    if (!session()->get('logged_in')) {
-      return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu!');
-    }
+    $anggota = $this->anggotaModel->findAll();
 
-    if (session()->get('role') !== 'admin') {
-      return redirect()->to('/login')->with('error', 'Akses ditolak!');
-    }
+    $data = [
+      'title' => 'Tambah Kegiatan',
+      'anggota' => $anggota,
+      'is_admin' => (session()->get('role') === 'admin'),
+      'role' => session()->get('role'),
+      'username' => session()->get('username'),
+      'nama_anggota' => session()->get('nama_anggota')
+    ];
 
-    $kegiatanModel = new KegiatanModel();
-
-    // Validasi inputan
-    $validation = Services::validation();
-    $validation->setRules([
-      'id_anggota' => 'required',
-      'nama_kegiatan' => 'required',
-      'tanggal_kegiatan' => 'required'
-    ]);
-
-    if (!$validation->withRequest($this->request)->run()) {
-      return redirect()->back()->withInput()->with('errors', $validation->getErrors());
-    }
-
-    $kegiatanModel->insert([
-      'id_anggota' => $this->request->getPost('id_anggota'),
-      'nama_kegiatan' => $this->request->getPost('nama_kegiatan'),
-      'tanggal_kegiatan' => $this->request->getPost('tanggal_kegiatan'),
-      'dibuat_oleh' => session()->get('nama_user')
-    ]);
-
-    // Redirect dengan pesan sukses
-    return redirect()->to('/kegiatan')->with('success', 'Data anggota berhasil disimpan!');
+    return view('kegiatan/index', $data);
   }
 
-  public function detail($id_kegiatan)
+  public function simpan()
   {
-    if (!session()->get('logged_in')) {
-      return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu!');
+    $validation = \Config\Services::validation();
+
+    $rules = [
+      'nama_kegiatan' => 'required|min_length[3]|max_length[100]',
+      'tanggal_kegiatan' => 'required|valid_date',
+      'deskripsi' => 'permit_empty|max_length[500]'
+    ];
+
+    // Admin bisa pilih anggota, user biasa otomatis pakai id_anggota dari session
+    if (session()->get('role') === 'admin') {
+      $rules['id_anggota'] = 'required|integer';
+      $idAnggota = $this->request->getPost('id_anggota');
+    } else {
+      $idAnggota = session()->get('id_anggota');
     }
 
-    if (session()->get('role') !== 'admin') {
-      return redirect()->to('/login')->with('error', 'Akses ditolak!');
+    if (!$this->validate($rules)) {
+      return redirect()->back()
+        ->withInput()
+        ->with('errors', $this->validator->getErrors());
     }
 
-    $kegiatanModel = new KegiatanModel();
-    $konganModel = new KonganModel();
-    $anggotaModel = new AnggotaModel();
+    $data = [
+      'id_anggota' => $idAnggota,
+      'nama_kegiatan' => $this->request->getPost('nama_kegiatan'),
+      'tanggal_kegiatan' => $this->request->getPost('tanggal_kegiatan'),
+      'deskripsi' => $this->request->getPost('deskripsi'),
+      'created_at' => date('Y-m-d H:i:s'),
+      'updated_at' => date('Y-m-d H:i:s')
+    ];
 
-    // Ambil data kegiatan berdasarkan ID yang spesifik
-    $data['kegiatan'] = $kegiatanModel->getKegiatanWithAnggota($id_kegiatan);
-    $data['anggota'] = $anggotaModel->findAll();
-    $data['kongan'] = $konganModel->getKonganWithAnggota($id_kegiatan);
+    if ($this->kegiatanModel->insert($data)) {
+      return redirect()->to('/kegiatan')
+        ->with('success', 'Kegiatan berhasil ditambahkan!');
+    } else {
+      return redirect()->back()
+        ->withInput()
+        ->with('error', 'Gagal menambahkan kegiatan!');
+    }
+  }
 
-    // Cek aktivitas anggota yang mengadakan kegiatan di kegiatan lain
-    if (!empty($data['kegiatan'])) {
-      $id_anggota_kegiatan = $data['kegiatan'][0]['id_anggota'];
-      $data['aktivitas_anggota'] = $konganModel->getAktivitasAnggotaLain($id_anggota_kegiatan, $id_kegiatan);
+  public function detail($id)
+  {
+    // Ambil single row kegiatan (bukan array of arrays)
+    $kegiatan = $this->kegiatanModel
+      ->select('kegiatan.*, anggota.nama_anggota, anggota.alamat, anggota.no_hp')
+      ->join('anggota', 'anggota.id_anggota = kegiatan.id_anggota')
+      ->where('kegiatan.id_kegiatan', $id)
+      ->first(); // Ini mengembalikan single row, bukan array of rows
+
+    // Debug untuk memastikan struktur data
+    // var_dump($kegiatan); die(); // Uncomment untuk debug
+
+    if (!$kegiatan) {
+      return redirect()->to('/kegiatan')
+        ->with('error', 'Kegiatan tidak ditemukan!');
     }
 
-    if (empty($data['kegiatan'])) {
-      throw new \CodeIgniter\Exceptions\PageNotFoundException('Kegiatan tidak ditemukan: ' . $id_kegiatan);
+    // Cek akses - admin bisa lihat semua, anggota hanya miliknya
+    if (session()->get('role') !== 'admin' && $kegiatan['id_anggota'] != session()->get('id_anggota')) {
+      return redirect()->to('/kegiatan')
+        ->with('error', 'Anda tidak memiliki akses ke kegiatan ini!');
     }
+
+    // Ambil detail kongan dengan pengecekan
+    $db = \Config\Database::connect();
+    $kongan = $db->table('kegiatan_detail')
+      ->select('kegiatan_detail.*, anggota.nama_anggota')
+      ->join('anggota', 'anggota.id_anggota = kegiatan_detail.id_anggota')
+      ->where('kegiatan_detail.id_kegiatan', $id)
+      ->orderBy('kegiatan_detail.created_at', 'DESC')
+      ->get()
+      ->getResultArray();
+
+    // Pastikan $kongan adalah array
+    if (!is_array($kongan)) {
+      $kongan = [];
+    }
+
+    // Statistik dengan pengecekan
+    $totalPeserta = count($kongan);
+    $totalUang = !empty($kongan) ? array_sum(array_column($kongan, 'jumlah')) : 0;
+
+    // Ambil semua anggota
+    $anggota = $this->anggotaModel->findAll();
+    if (!is_array($anggota)) {
+      $anggota = [];
+    }
+
+    $data = [
+      'title' => 'Detail Kegiatan',
+      'kegiatan' => $kegiatan, // Single array, bukan array of arrays
+      'kongan' => $kongan,
+      'total_peserta' => $totalPeserta,
+      'total_uang' => $totalUang,
+      'is_admin' => (session()->get('role') === 'admin'),
+      'role' => session()->get('role'),
+      'username' => session()->get('username'),
+      'nama_anggota' => session()->get('nama_anggota'),
+      'anggota' => $anggota
+    ];
 
     return view('kegiatan/detail', $data);
   }
 
+  public function edit($id)
+  {
+    $kegiatan = $this->kegiatanModel->find($id);
+
+    if (!$kegiatan) {
+      return redirect()->to('/kegiatan')
+        ->with('error', 'Kegiatan tidak ditemukan!');
+    }
+
+    // Cek akses - admin bisa edit semua, anggota hanya miliknya
+    if (session()->get('role') !== 'admin' && $kegiatan['id_anggota'] != session()->get('id_anggota')) {
+      return redirect()->to('/kegiatan')
+        ->with('error', 'Anda tidak memiliki akses untuk mengedit kegiatan ini!');
+    }
+
+    $anggota = $this->anggotaModel->findAll();
+
+    $data = [
+      'title' => 'Edit Kegiatan',
+      'kegiatan' => $kegiatan,
+      'anggota' => $anggota,
+      'is_admin' => (session()->get('role') === 'admin'),
+      'role' => session()->get('role'),
+      'username' => session()->get('username'),
+      'nama_anggota' => session()->get('nama_anggota')
+    ];
+
+    return view('kegiatan/edit', $data);
+  }
+
+  public function update($id)
+  {
+    $kegiatan = $this->kegiatanModel->find($id);
+
+    if (!$kegiatan) {
+      return redirect()->to('/kegiatan')
+        ->with('error', 'Kegiatan tidak ditemukan!');
+    }
+
+    // Cek akses
+    if (session()->get('role') !== 'admin' && $kegiatan['id_anggota'] != session()->get('id_anggota')) {
+      return redirect()->to('/kegiatan')
+        ->with('error', 'Anda tidak memiliki akses untuk mengedit kegiatan ini!');
+    }
+
+    $rules = [
+      'nama_kegiatan' => 'required|min_length[3]|max_length[100]',
+      'tanggal_kegiatan' => 'required|valid_date',
+      'deskripsi' => 'permit_empty|max_length[500]'
+    ];
+
+    // Admin bisa ubah anggota, user biasa tidak bisa
+    if (session()->get('role') === 'admin') {
+      $rules['id_anggota'] = 'required|integer';
+      $idAnggota = $this->request->getPost('id_anggota');
+    } else {
+      $idAnggota = $kegiatan['id_anggota']; // Tetap pakai yang lama
+    }
+
+    if (!$this->validate($rules)) {
+      return redirect()->back()
+        ->withInput()
+        ->with('errors', $this->validator->getErrors());
+    }
+
+    $data = [
+      'id_anggota' => $idAnggota,
+      'nama_kegiatan' => $this->request->getPost('nama_kegiatan'),
+      'tanggal_kegiatan' => $this->request->getPost('tanggal_kegiatan'),
+      'deskripsi' => $this->request->getPost('deskripsi'),
+      'updated_at' => date('Y-m-d H:i:s')
+    ];
+
+    if ($this->kegiatanModel->update($id, $data)) {
+      return redirect()->to('/kegiatan/detail/' . $id)
+        ->with('success', 'Kegiatan berhasil diperbarui!');
+    } else {
+      return redirect()->back()
+        ->withInput()
+        ->with('error', 'Gagal memperbarui kegiatan!');
+    }
+  }
+
+  public function hapus($id)
+  {
+    $kegiatan = $this->kegiatanModel->find($id);
+
+    if (!$kegiatan) {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Kegiatan tidak ditemukan!'
+      ]);
+    }
+
+    // Cek akses - admin bisa hapus semua, anggota hanya miliknya
+    if (session()->get('role') !== 'admin' && $kegiatan['id_anggota'] != session()->get('id_anggota')) {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Anda tidak memiliki akses untuk menghapus kegiatan ini!'
+      ]);
+    }
+
+    $db = \Config\Database::connect();
+
+    // Hapus detail kegiatan dulu
+    $db->table('kegiatan_detail')->where('id_kegiatan', $id)->delete();
+
+    // Kemudian hapus kegiatan
+    if ($this->kegiatanModel->delete($id)) {
+      return $this->response->setJSON([
+        'success' => true,
+        'message' => 'Kegiatan berhasil dihapus!'
+      ]);
+    } else {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Gagal menghapus kegiatan!'
+      ]);
+    }
+  }
+
   public function tambah_kongan()
   {
-    if (!session()->get('logged_in')) {
-      return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu!');
+    $rules = [
+      'id_kegiatan' => 'required|integer',
+      'id_anggota' => 'required|integer',
+      'jumlah' => 'required|integer|greater_than[0]'
+    ];
+
+    if (!$this->validate($rules)) {
+      return redirect()->back()
+        ->withInput()
+        ->with('errors', $this->validator->getErrors());
     }
 
-    if (session()->get('role') !== 'admin') {
-      return redirect()->to('/login')->with('error', 'Akses ditolak!');
+    $idKegiatan = $this->request->getPost('id_kegiatan');
+    $idAnggota = $this->request->getPost('id_anggota');
+    $jumlah = $this->request->getPost('jumlah');
+
+    // Cek apakah kegiatan ada
+    $kegiatan = $this->kegiatanModel->find($idKegiatan);
+    if (!$kegiatan) {
+      return redirect()->back()
+        ->with('error', 'Kegiatan tidak ditemukan!');
     }
 
-    $konganModel = new KonganModel();
-
-    // Validasi inputan
-    $validation = Services::validation();
-    $validation->setRules([
-      'id_kegiatan' => 'required|numeric',
-      'id_anggota' => 'required|numeric',
-      'jumlah' => 'required|numeric|greater_than[0]'  // Sesuaikan dengan name di form
-    ]);
-
-    if (!$validation->withRequest($this->request)->run()) {
-      return redirect()->back()->withInput()->with('errors', $validation->getErrors());
+    // Cek akses
+    if (session()->get('role') !== 'admin' && $kegiatan['id_anggota'] != session()->get('id_anggota')) {
+      return redirect()->back()
+        ->with('error', 'Anda tidak memiliki akses untuk menambah kongan!');
     }
 
-    $id_kegiatan = $this->request->getPost('id_kegiatan');
-    $id_anggota = $this->request->getPost('id_anggota');
-    $jumlah = $this->request->getPost('jumlah'); // Sesuaikan dengan name di form
-
-    // Cek duplikasi HANYA di kegiatan yang sama
-    $existing = $konganModel->checkDuplicate($id_kegiatan, $id_anggota);
+    // Cek apakah anggota sudah ada di kegiatan ini
+    $db = \Config\Database::connect();
+    $existing = $db->table('kegiatan_detail')
+      ->where('id_kegiatan', $idKegiatan)
+      ->where('id_anggota', $idAnggota)
+      ->get()
+      ->getRowArray();
 
     if ($existing) {
-      return redirect()->back()->withInput()->with('error', 'Anggota ini sudah memiliki kongan di kegiatan ini!');
+      return redirect()->back()
+        ->with('error', 'Anggota sudah memberikan kongan pada kegiatan ini!');
     }
 
-    try {
-      $konganModel->insert([
-        'id_kegiatan' => $id_kegiatan,
-        'id_anggota' => $id_anggota,
-        'jumlah' => $jumlah
-      ]);
+    $data = [
+      'id_kegiatan' => $idKegiatan,
+      'id_anggota' => $idAnggota,
+      'jumlah' => $jumlah,
+      'created_at' => date('Y-m-d H:i:s'),
+      'updated_at' => date('Y-m-d H:i:s')
+    ];
 
-      return redirect()->to('/kegiatan/detail/' . $id_kegiatan)->with('success', 'Kongan berhasil ditambahkan!');
-    } catch (\Exception $e) {
-      return redirect()->back()->withInput()->with('error', 'Gagal menyimpan kongan: ' . $e->getMessage());
-    }
-  }
+    if ($db->table('kegiatan_detail')->insert($data)) {
+      // Ambil nama anggota untuk pesan
+      $anggota = $this->anggotaModel->find($idAnggota);
 
-  public function hapus_kongan($id_detail_kegiatan)
-  {
-    if (!session()->get('logged_in')) {
-      return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu!');
-    }
-
-    if (session()->get('role') !== 'admin') {
-      return redirect()->to('/login')->with('error', 'Akses ditolak!');
-    }
-
-    $konganModel = new KonganModel();
-
-    if (!$this->request->isAJAX()) {
-      return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
-    }
-
-    try {
-      $kongan = $konganModel->find($id_detail_kegiatan);
-
-      if (!$kongan) {
-        return $this->response->setJSON(['success' => false, 'message' => 'Data kongan tidak ditemukan']);
-      }
-
-      $konganModel->delete($id_detail_kegiatan);
-
-      return $this->response->setJSON(['success' => true, 'message' => 'Kongan berhasil dihapus']);
-    } catch (\Exception $e) {
-      return $this->response->setJSON(['success' => false, 'message' => 'Gagal menghapus kongan: ' . $e->getMessage()]);
+      return redirect()->to('/kegiatan/detail/' . $idKegiatan)
+        ->with('success', 'Kongan dari ' . $anggota['nama_anggota'] . ' sebesar Rp ' . number_format($jumlah) . ' berhasil ditambahkan!');
+    } else {
+      return redirect()->back()
+        ->with('error', 'Gagal menambahkan kongan!');
     }
   }
 
-  public function hapus($id_kegiatan)
+  public function hapus_kongan($id)
   {
-    if (!session()->get('logged_in')) {
-      return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu!');
+    $db = \Config\Database::connect();
+
+    $kongan = $db->table('kegiatan_detail')
+      ->where('id_detail_kegiatan', $id) // PERBAIKI: gunakan 'id_detail_kegiatan' bukan 'id_detail_kongan'
+      ->get()
+      ->getRowArray();
+
+    if (!$kongan) {
+      return redirect()->back()
+        ->with('error', 'Data kongan tidak ditemukan!');
     }
 
-    if (session()->get('role') !== 'admin') {
-      return redirect()->to('/login')->with('error', 'Akses ditolak!');
+    // Cek akses melalui kegiatan
+    $kegiatan = $this->kegiatanModel->find($kongan['id_kegiatan']);
+    if (session()->get('role') !== 'admin' && $kegiatan['id_anggota'] != session()->get('id_anggota')) {
+      return redirect()->back()
+        ->with('error', 'Anda tidak memiliki akses untuk menghapus kongan ini!');
     }
 
-    $kegiatanModel = new KegiatanModel();
-    $konganModel = new KonganModel();
-
-    // Cek apakah kegiatan memiliki detail kongan
-    $detail_kongan = $konganModel->where('id_kegiatan', $id_kegiatan)->findAll();
-
-    if (!empty($detail_kongan)) {
-      return redirect()->back()->with('error', 'Kegiatan tidak dapat dihapus karena masih memiliki data kongan!');
-    }
-
-    try {
-      $kegiatan = $kegiatanModel->find($id_kegiatan);
-
-      if (!$kegiatan) {
-        return redirect()->back()->with('error', 'Kegiatan tidak ditemukan!');
-      }
-
-      $kegiatanModel->delete($id_kegiatan);
-
-      return redirect()->to('/kegiatan')->with('success', 'Kegiatan berhasil dihapus!');
-    } catch (\Exception $e) {
-      return redirect()->back()->with('error', 'Gagal menghapus kegiatan: ' . $e->getMessage());
-    }
-  }
-
-  public function import_kongan()
-  {
-    if (!session()->get('logged_in')) {
-      return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu!');
-    }
-
-    if (session()->get('role') !== 'admin') {
-      return redirect()->to('/login')->with('error', 'Akses ditolak!');
-    }
-
-    $konganModel = new KonganModel();
-    $anggotaModel = new AnggotaModel();
-
-    $id_kegiatan = $this->request->getPost('id_kegiatan');
-
-    if (empty($_FILES['file']['name'])) {
-      return redirect()->back()->with('error', 'File harus dipilih!');
-    }
-
-    $file = $this->request->getFile('file');
-    $extension = $file->getClientExtension();
-
-    if (!in_array($extension, ['csv', 'xlsx', 'xls'])) {
-      return redirect()->back()->with('error', 'Format file harus CSV atau Excel!');
-    }
-
-    try {
-      $data = [];
-      $success_count = 0;
-      $error_count = 0;
-      $skip_count = 0;
-      $error_details = []; // Array untuk menyimpan detail error
-      $duplicate_details = []; // Array untuk duplikasi
-
-      if ($extension == 'csv') {
-        // Handle CSV
-        if (($handle = fopen($file->getTempName(), "r")) !== FALSE) {
-          $row = 0;
-          while (($data_csv = fgetcsv($handle, 1000, ",")) !== FALSE) {
-            $row++;
-
-            if (empty(array_filter($data_csv))) continue;
-            if ($row == 1) continue; // Skip header
-
-            if (!isset($data_csv[0]) || empty(trim($data_csv[0]))) {
-              $error_details[] = "Baris $row: Nama anggota kosong";
-              $error_count++;
-              continue;
-            }
-
-            $nama_anggota_raw = trim($data_csv[0]);
-
-            if (!isset($data_csv[1]) || empty(trim($data_csv[1]))) {
-              $skip_count++;
-              continue;
-            }
-
-            $jumlah_raw = trim($data_csv[1]);
-            $nama_anggota = trim(str_replace(['Rp', 'A.', 'A '], '', $nama_anggota_raw));
-            $jumlah = (int) preg_replace('/[^0-9]/', '', $jumlah_raw);
-
-            if (empty($nama_anggota)) {
-              $error_details[] = "Baris $row: Nama '$nama_anggota_raw' tidak valid setelah dibersihkan";
-              $error_count++;
-              continue;
-            }
-
-            // Pencarian anggota yang lebih fleksibel
-            $anggota = $anggotaModel->like('nama_anggota', $nama_anggota)->first();
-
-            if (!$anggota) {
-              // Coba pencarian alternatif
-              $anggota = $anggotaModel
-                ->groupStart()
-                ->like('nama_anggota', $nama_anggota)
-                ->orWhere("nama_anggota LIKE '%$nama_anggota%'")
-                ->groupEnd()
-                ->first();
-            }
-
-            if (!$anggota) {
-              $error_details[] = "Baris $row: Anggota '$nama_anggota' tidak ditemukan di database";
-              $error_count++;
-              continue;
-            }
-
-            if ($jumlah <= 0) {
-              $skip_count++;
-              continue;
-            }
-
-            $existing = $konganModel->checkDuplicate($id_kegiatan, $anggota['id_anggota']);
-            if ($existing) {
-              $duplicate_details[] = "Baris $row: '$nama_anggota' sudah ada kongan sebelumnya";
-              $error_count++;
-              continue;
-            }
-
-            $data[] = [
-              'id_kegiatan' => $id_kegiatan,
-              'id_anggota' => $anggota['id_anggota'],
-              'jumlah' => $jumlah
-            ];
-
-            $success_count++;
-          }
-          fclose($handle);
-        }
-      } else {
-        // Handle Excel (.xlsx/.xls)
-        try {
-          require_once ROOTPATH . 'vendor/autoload.php';
-          $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-          $spreadsheet = $reader->load($file->getTempName());
-          $worksheet = $spreadsheet->getActiveSheet();
-          $highestRow = $worksheet->getHighestRow();
-
-          for ($row = 2; $row <= $highestRow; $row++) {
-            $nama_anggota_raw = trim($worksheet->getCell('A' . $row)->getValue() ?? '');
-            $jumlah_raw = trim($worksheet->getCell('B' . $row)->getValue() ?? '');
-
-            if (empty($nama_anggota_raw)) {
-              $error_details[] = "Baris $row: Nama anggota kosong";
-              $error_count++;
-              continue;
-            }
-
-            if (empty($jumlah_raw)) {
-              $skip_count++;
-              continue;
-            }
-
-            $nama_anggota = trim(str_replace(['A.', 'A ', 'Rp'], '', $nama_anggota_raw));
-            $jumlah = (int) preg_replace('/[^0-9]/', '', $jumlah_raw);
-
-            if (empty($nama_anggota)) {
-              $error_details[] = "Baris $row: Nama '$nama_anggota_raw' tidak valid setelah dibersihkan";
-              $error_count++;
-              continue;
-            }
-
-            $anggota = $anggotaModel->like('nama_anggota', $nama_anggota)->first();
-
-            if (!$anggota) {
-              $anggota = $anggotaModel
-                ->groupStart()
-                ->like('nama_anggota', $nama_anggota)
-                ->orWhere("nama_anggota LIKE '%$nama_anggota%'")
-                ->groupEnd()
-                ->first();
-            }
-
-            if (!$anggota) {
-              $error_details[] = "Baris $row: Anggota '$nama_anggota' tidak ditemukan di database";
-              $error_count++;
-              continue;
-            }
-
-            if ($jumlah <= 0) {
-              $skip_count++;
-              continue;
-            }
-
-            $existing = $konganModel->checkDuplicate($id_kegiatan, $anggota['id_anggota']);
-            if ($existing) {
-              $duplicate_details[] = "Baris $row: '$nama_anggota' sudah ada kongan sebelumnya";
-              $error_count++;
-              continue;
-            }
-
-            $data[] = [
-              'id_kegiatan' => $id_kegiatan,
-              'id_anggota' => $anggota['id_anggota'],
-              'jumlah' => $jumlah
-            ];
-
-            $success_count++;
-          }
-        } catch (\Exception $e) {
-          return redirect()->back()->with('error', 'Gagal membaca file Excel: ' . $e->getMessage());
-        }
-      }
-
-      if (!empty($data)) {
-        $konganModel->insertBatch($data);
-
-        $message = "Import kongan berhasil! $success_count data ditambahkan.";
-
-        if ($skip_count > 0) {
-          $message .= " ($skip_count anggota tidak nulis)";
-        }
-
-        if ($error_count > 0) {
-          $message .= " ($error_count data bermasalah)";
-
-          // Tambahkan detail error ke session untuk ditampilkan
-          $all_errors = array_merge($error_details, $duplicate_details);
-          session()->setFlashdata('import_errors', $all_errors);
-        }
-
-        return redirect()->to('/kegiatan/detail/' . $id_kegiatan)->with('success', $message);
-      } else {
-        $error_msg = 'Tidak ada data valid yang bisa diimpor!';
-
-        if ($skip_count > 0) {
-          $error_msg .= " $skip_count anggota tidak nulis kongan.";
-        }
-        if ($error_count > 0) {
-          $error_msg .= " $error_count data bermasalah.";
-
-          // Tampilkan detail error
-          $all_errors = array_merge($error_details, $duplicate_details);
-          session()->setFlashdata('import_errors', $all_errors);
-        }
-
-        return redirect()->back()->with('error', $error_msg);
-      }
-    } catch (\Exception $e) {
-      return redirect()->back()->with('error', 'Gagal import file: ' . $e->getMessage());
+    if ($db->table('kegiatan_detail')->delete(['id_detail_kegiatan' => $id])) {
+      return redirect()->to('/kegiatan/detail/' . $kongan['id_kegiatan'])
+        ->with('success', 'Kongan berhasil dihapus!');
+    } else {
+      return redirect()->back()
+        ->with('error', 'Gagal menghapus kongan!');
     }
   }
 }

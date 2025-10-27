@@ -1,7 +1,7 @@
 # 🌐 Kongan-PB
 
 **Kongan-PB** adalah aplikasi berbasis web yang dikembangkan untuk mendukung proses pengelolaan kegiatan dan pelaporan secara digital.  
-Dibangun menggunakan framework **PHP (CodeIgniter/Laravel)** dengan struktur modular, desain antarmuka modern, dan sistem autentikasi yang aman.
+Dibangun menggunakan framework **PHP (CodeIgniter)** dengan struktur modular, desain antarmuka modern, dan sistem autentikasi yang aman.
 
 ---
 
@@ -19,13 +19,13 @@ Dibangun menggunakan framework **PHP (CodeIgniter/Laravel)** dengan struktur mod
 
 ## 🛠️ Teknologi yang Digunakan
 
-| Kategori | Teknologi                          |
-| -------- | ---------------------------------- |
-| Backend  | PHP 8+, CodeIgniter 3 / Laravel 10 |
-| Frontend | Bootstrap 5, AdminLTE, jQuery      |
-| Database | MySQL / MariaDB                    |
-| Server   | Apache (Laragon / XAMPP)           |
-| Tools    | Git, Composer, NPM                 |
+| Kategori | Teknologi                     |
+| -------- | ----------------------------- |
+| Backend  | PHP 8+, CodeIgniter 4         |
+| Frontend | Bootstrap 5, AdminLTE, jQuery |
+| Database | MySQL / MariaDB               |
+| Server   | Apache (Laragon / XAMPP)      |
+| Tools    | Git, Composer, NPM            |
 
 ---
 
