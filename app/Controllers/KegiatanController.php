@@ -430,6 +430,31 @@ class KegiatanController extends BaseController
     }
   }
 
+  public function update_pengaturan($id_kegiatan)
+  {
+    if (!$this->validate_access($id_kegiatan)) {
+      return redirect()->back()->with('error', 'Akses ditolak');
+    }
+
+    $mode = $this->request->getPost('potongan_tidak_ikut_mode');
+    $amountTidakIkut = (int) preg_replace('/\D/', '', (string) $this->request->getPost('potongan_tidak_ikut_amount'));
+    $amountUndangan  = (int) preg_replace('/\D/', '', (string) $this->request->getPost('potongan_undangan_amount'));
+
+    if (!in_array($mode, ['activity_based', 'always', 'none'])) {
+      $mode = 'activity_based';
+    }
+    if ($amountTidakIkut < 0) $amountTidakIkut = 0;
+    if ($amountUndangan < 0) $amountUndangan = 0;
+
+    $this->kegiatanModel->update($id_kegiatan, [
+      'potongan_tidak_ikut_mode'   => $mode,
+      'potongan_tidak_ikut_amount' => $amountTidakIkut,
+      'potongan_undangan_amount'   => $amountUndangan,
+    ]);
+
+    return redirect()->to('/kegiatan/detail/' . $id_kegiatan)->with('success', 'Pengaturan potongan berhasil disimpan');
+  }
+
   public function export_pdf($id_kegiatan)
   {
     // Validasi akses
@@ -499,40 +524,57 @@ class KegiatanController extends BaseController
     $potongan_tidak_nulis = $anggota_aktif_di_kegiatan_lain ? 0 : 20000;
     $total_bersih = $total_kongan - $sepuluh_persen - $potongan_undangan - $potongan_tidak_nulis;
 
-    // Generate PDF
-    try {
-      $html = view('kegiatan/export_pdf', [
-        'kegiatan' => $kegiatan,
-        'kongan' => $kongan,
-        'total_kongan' => $total_kongan,
-        'sepuluh_persen' => $sepuluh_persen,
-        'potongan_undangan' => $potongan_undangan,
-        'potongan_tidak_nulis' => $potongan_tidak_nulis,
-        'total_bersih' => $total_bersih,
-        'anggota_aktif_di_kegiatan_lain' => $anggota_aktif_di_kegiatan_lain,
-        'jumlah_kegiatan_ikut' => $jumlah_kegiatan_ikut
-      ]);
+    // ambil pengaturan potongan dari kegiatan
+    $potMode = $kegiatan['potongan_tidak_ikut_mode'] ?? 'activity_based';
+    $potTidakIkut = (int)($kegiatan['potongan_tidak_ikut_amount'] ?? 20000);
+    $potUndangan  = (int)($kegiatan['potongan_undangan_amount'] ?? 280000);
 
-      $options = new Options();
-      $options->set('defaultFont', 'Arial');
-      $options->set('isRemoteEnabled', true);
-      $options->set('isHtml5ParserEnabled', true);
-
-      $dompdf = new Dompdf($options);
-      $dompdf->loadHtml($html);
-      $dompdf->setPaper('A4', 'portrait');
-      $dompdf->render();
-
-      $filename = 'Hasil_Kongan_' . str_replace(' ', '_', $kegiatan['nama_kegiatan']) . '_' . date('Y-m-d') . '.pdf';
-
-      return $this->response
-        ->setHeader('Content-Type', 'application/pdf')
-        ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
-        ->setBody($dompdf->output());
-    } catch (\Exception $e) {
-      log_message('error', 'Error generating PDF: ' . $e->getMessage());
-      return redirect()->to('/kegiatan')->with('error', 'Gagal generate PDF: ' . $e->getMessage());
+    // Hitung potongan tidak ikut sesuai mode
+    switch ($potMode) {
+      case 'none':
+        $potongan_tidak_nulis = 0;
+        break;
+      case 'always':
+        $potongan_tidak_nulis = $potTidakIkut;
+        break;
+      case 'activity_based':
+      default:
+        $potongan_tidak_nulis = $anggota_aktif_di_kegiatan_lain ? 0 : $potTidakIkut;
+        break;
     }
+
+    $total_bersih = $total_kongan - $sepuluh_persen - $potUndangan - $potongan_tidak_nulis;
+
+    // kirim variabel baru ke view export
+    $html = view('kegiatan/export_pdf', [
+      'kegiatan' => $kegiatan,
+      'kongan' => $kongan,
+      'total_kongan' => $total_kongan,
+      'sepuluh_persen' => $sepuluh_persen,
+      'potongan_undangan' => $potUndangan,
+      'potongan_tidak_nulis' => $potongan_tidak_nulis,
+      'potongan_mode' => $potMode,
+      'total_bersih' => $total_bersih,
+      'anggota_aktif_di_kegiatan_lain' => $anggota_aktif_di_kegiatan_lain,
+      'jumlah_kegiatan_ikut' => $jumlah_kegiatan_ikut
+    ]);
+
+    $options = new Options();
+    $options->set('defaultFont', 'Arial');
+    $options->set('isRemoteEnabled', true);
+    $options->set('isHtml5ParserEnabled', true);
+
+    $dompdf = new Dompdf($options);
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+
+    $filename = 'Hasil_Kongan_' . str_replace(' ', '_', $kegiatan['nama_kegiatan']) . '_' . date('Y-m-d') . '.pdf';
+
+    return $this->response
+      ->setHeader('Content-Type', 'application/pdf')
+      ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+      ->setBody($dompdf->output());
   }
 
   public function export_excel($id_kegiatan)
@@ -603,6 +645,27 @@ class KegiatanController extends BaseController
     $jumlah_kegiatan_ikut = count($aktivitas_anggota);
     $potongan_tidak_nulis = $anggota_aktif_di_kegiatan_lain ? 0 : 20000;
     $total_bersih = $total_kongan - $sepuluh_persen - $potongan_undangan - $potongan_tidak_nulis;
+
+    // ambil pengaturan potongan dari kegiatan
+    $potMode = $kegiatan['potongan_tidak_ikut_mode'] ?? 'activity_based';
+    $potTidakIkut = (int)($kegiatan['potongan_tidak_ikut_amount'] ?? 20000);
+    $potUndangan  = (int)($kegiatan['potongan_undangan_amount'] ?? 280000);
+
+    // Hitung potongan tidak ikut sesuai mode
+    switch ($potMode) {
+      case 'none':
+        $potongan_tidak_nulis = 0;
+        break;
+      case 'always':
+        $potongan_tidak_nulis = $potTidakIkut;
+        break;
+      case 'activity_based':
+      default:
+        $potongan_tidak_nulis = $anggota_aktif_di_kegiatan_lain ? 0 : $potTidakIkut;
+        break;
+    }
+
+    $total_bersih = $total_kongan - $sepuluh_persen - $potUndangan - $potongan_tidak_nulis;
 
     try {
       // Buat spreadsheet

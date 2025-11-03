@@ -10,9 +10,14 @@ class KegiatanModel extends Model
   protected $primaryKey = 'id_kegiatan';
   protected $allowedFields = [
     'id_anggota',
-    'tanggal_kegiatan',
     'nama_kegiatan',
-    'dibuat_oleh'
+    'tanggal_kegiatan',
+    'deskripsi',
+    'potongan_tidak_ikut_mode',
+    'potongan_tidak_ikut_amount',
+    'potongan_undangan_amount',
+    'created_at',
+    'updated_at'
   ];
 
   public function getKegiatanWithAnggota($id_kegiatan = null)

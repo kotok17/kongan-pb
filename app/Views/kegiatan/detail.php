@@ -34,8 +34,8 @@
     $canManage = false;
     if (session()->get('role') === 'admin') {
       $canManage = true; // Admin bisa manage semua kegiatan
-    } elseif (session()->get('role') === 'anggota' && $kegiatan[0]['id_anggota'] == session()->get('id_anggota')) {
-      $canManage = true; // Anggota hanya bisa manage kegiatan sendiri
+    } elseif (session()->get('role') === 'anggota' && isset($kegiatan['id_anggota']) && $kegiatan['id_anggota'] == session()->get('id_anggota')) {
+      $canManage = true; // Anggota hanya bisa manage kegiatan sendiri - PERBAIKAN DI SINI
     }
     ?>
 
@@ -91,7 +91,7 @@
 
       <!-- Modal Import Excel -->
       <div class="modal fade" id="modalImport" tabindex="-1" aria-labelledby="modalImportLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header bg-success text-white">
               <h5 class="modal-title" id="modalImportLabel">
@@ -106,50 +106,79 @@
               <div class="modal-body">
                 <!-- Download Template Section -->
                 <div class="alert alert-info mb-3">
-                  <h6 class="alert-heading mb-2">
-                    <i class="fas fa-info-circle me-2"></i>Petunjuk Import
-                  </h6>
-                  <ol class="mb-2 small">
-                    <li>Download template format import terlebih dahulu</li>
-                    <li>Isi data sesuai format yang ada di template</li>
-                    <li>Simpan file dalam format Excel (.xlsx) atau CSV</li>
-                    <li>Upload file yang sudah diisi melalui form ini</li>
-                  </ol>
-                  <a href="<?= base_url('kegiatan/download_template_import') ?>" class="btn btn-sm btn-outline-info w-100"
-                    target="_blank">
-                    <i class="fas fa-download me-2"></i>Download Template Import
-                  </a>
-                </div>
+                  <div class="d-flex align-items-start">
+                    <i class="fas fa-info-circle fa-2x me-3 mt-1"></i>
+                    <div class="flex-grow-1">
+                      <h6 class="alert-heading mb-2 fw-bold">
+                        Petunjuk Import Data Kongan
+                      </h6>
+                      <ol class="mb-3 small">
+                        <li class="mb-1">Download template format import terlebih dahulu</li>
+                        <li class="mb-1">Isi data kongan sesuai format yang ada di template</li>
+                        <li class="mb-1">Pastikan nama anggota sesuai dengan data yang terdaftar</li>
+                        <li class="mb-1">Simpan file dalam format Excel (.xlsx) atau CSV</li>
+                        <li class="mb-1">Upload file yang sudah diisi melalui form di bawah ini</li>
+                      </ol>
 
-                <!-- File Upload -->
-                <div class="mb-3">
-                  <label for="file" class="form-label fw-bold">
-                    <i class="fas fa-file-excel me-2"></i>Pilih File Excel/CSV
-                  </label>
-                  <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls,.csv" required>
-                  <div class="form-text">
-                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
-                    Format yang didukung: .xlsx, .xls, .csv (Max 2MB)
+                      <!-- Button Download Template - DIPERBESAR -->
+                      <div class="d-grid gap-2">
+                        <a href="<?= base_url('kegiatan/download_template_import') ?>"
+                          class="btn btn-outline-primary btn-lg" target="_blank">
+                          <i class="fas fa-download me-2"></i>
+                          <strong>Download Template Import</strong>
+                          <small class="d-block mt-1">Format Excel (.xlsx)</small>
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <!-- Preview Info -->
-                <div class="card bg-light">
-                  <div class="card-body py-2">
-                    <small class="text-muted">
-                      <i class="fas fa-lightbulb me-1"></i>
-                      <strong>Tips:</strong> Pastikan nama anggota di file sesuai dengan nama yang terdaftar di sistem
-                    </small>
+                <!-- File Upload Section -->
+                <div class="card border-primary">
+                  <div class="card-header bg-primary bg-opacity-10">
+                    <h6 class="mb-0 text-primary">
+                      <i class="fas fa-upload me-2"></i>Upload File Import
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-3">
+                      <label for="file" class="form-label fw-bold">
+                        <i class="fas fa-file-excel me-2"></i>Pilih File Excel/CSV
+                        <span class="text-danger">*</span>
+                      </label>
+                      <input type="file" class="form-control form-control-lg" id="file" name="file"
+                        accept=".xlsx,.xls,.csv" required>
+                      <div class="form-text">
+                        <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                        Format yang didukung: .xlsx, .xls, .csv (Maksimal 2MB)
+                      </div>
+                    </div>
+
+                    <!-- Tips Section -->
+                    <div class="alert alert-warning mb-0">
+                      <div class="d-flex align-items-start">
+                        <i class="fas fa-lightbulb fa-lg me-2 mt-1"></i>
+                        <div>
+                          <strong>Tips Penting:</strong>
+                          <ul class="mb-0 mt-2 small">
+                            <li>Pastikan nama anggota di file Excel sama persis dengan nama di sistem</li>
+                            <li>Jumlah kongan harus berupa angka tanpa format (contoh: 50000 bukan Rp 50.000)</li>
+                            <li>Jangan mengubah atau menghapus baris header di template</li>
+                            <li>Data yang sudah ada akan dilewati (tidak duplikat)</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div class="modal-footer">
+              <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                   <i class="fas fa-times me-2"></i>Batal
                 </button>
-                <button type="submit" class="btn btn-success">
-                  <i class="fas fa-upload me-2"></i>Upload & Import
+                <button type="submit" class="btn btn-success btn-lg">
+                  <i class="fas fa-upload me-2"></i>Upload & Import Data
                 </button>
               </div>
             </form>
@@ -328,20 +357,26 @@
           <?php
           $total_kongan = array_sum(array_column($kongan, 'jumlah'));
           $sepuluh_persen = $total_kongan * 0.1;
-          $potongan_undangan = 280000;
 
-          // Cek aktivitas anggota
-          $id_anggota_kegiatan = $kegiatan['id_anggota'] ?? null;
-          $anggota_aktif_di_kegiatan_lain = false;
-          $jumlah_kegiatan_ikut = 0;
+          $mode = $kegiatan['potongan_tidak_ikut_mode'] ?? 'activity_based';
+          $potTidakIkut = (int)($kegiatan['potongan_tidak_ikut_amount'] ?? 20000);
+          $potUndangan  = (int)($kegiatan['potongan_undangan_amount'] ?? 280000);
 
-          if (!empty($aktivitas_anggota)) {
-            $anggota_aktif_di_kegiatan_lain = true;
-            $jumlah_kegiatan_ikut = count($aktivitas_anggota);
+          $anggota_aktif_di_kegiatan_lain = !empty($aktivitas_anggota);
+          switch ($mode) {
+            case 'none':
+              $potongan_tidak_nulis = 0;
+              break;
+            case 'always':
+              $potongan_tidak_nulis = $potTidakIkut;
+              break;
+            case 'activity_based':
+            default:
+              $potongan_tidak_nulis = $anggota_aktif_di_kegiatan_lain ? 0 : $potTidakIkut;
+              break;
           }
 
-          $potongan_tidak_nulis = $anggota_aktif_di_kegiatan_lain ? 0 : 20000;
-          $total_bersih = $total_kongan - $sepuluh_persen - $potongan_undangan - $potongan_tidak_nulis;
+          $total_bersih = $total_kongan - $sepuluh_persen - $potUndangan - $potongan_tidak_nulis;
           ?>
           <tfoot class="bg-light">
             <tr>
@@ -356,10 +391,17 @@
                 <span class="text-danger">- Rp <?= number_format($sepuluh_persen, 0, ',', '.') ?></span>
               </th>
             </tr>
-            <?php if (!$anggota_aktif_di_kegiatan_lain): ?>
+            <?php if ($potongan_tidak_nulis > 0): ?>
               <tr>
                 <th colspan="3" class="text-end">
-                  <small>Pot. Tidak Nulis Kegiatan Lain (0x ikut):</small>
+                  <small>
+                    Potongan Tidak Ikut
+                    <?php if ($mode === 'activity_based'): ?>
+                      (berdasar keaktifan)
+                    <?php elseif ($mode === 'always'): ?>
+                      (selalu)
+                      <?php endif; ?>:
+                  </small>
                 </th>
                 <th class="text-end">
                   <span class="text-danger">- Rp <?= number_format($potongan_tidak_nulis, 0, ',', '.') ?></span>
@@ -367,9 +409,7 @@
               </tr>
             <?php else: ?>
               <tr>
-                <th colspan="3" class="text-end text-success">
-                  <small>Bonus Aktif Kegiatan Lain (<?= $jumlah_kegiatan_ikut ?>x ikut):</small>
-                </th>
+                <th colspan="3" class="text-end"><small>Potongan Tidak Ikut:</small></th>
                 <th class="text-end">
                   <span class="text-success">+ Rp 0</span>
                 </th>
@@ -378,7 +418,7 @@
             <tr>
               <th colspan="3" class="text-end">Potongan Undangan:</th>
               <th class="text-end">
-                <span class="text-danger">- Rp <?= number_format($potongan_undangan, 0, ',', '.') ?></span>
+                <span class="text-danger">- Rp <?= number_format($potUndangan, 0, ',', '.') ?></span>
               </th>
             </tr>
             <tr class="table-primary">
@@ -447,6 +487,57 @@
           </div>
         </form>
       </div>
+    </div>
+  </div>
+  <br>
+
+  <!-- Pengaturan Potongan -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+      <h6 class="mb-0 fw-bold">
+        <i class="fas fa-sliders-h me-2"></i>Pengaturan Potongan Kegiatan Ini
+      </h6>
+    </div>
+    <div class="card-body">
+      <form action="<?= base_url('kegiatan/update_pengaturan/' . ($kegiatan['id_kegiatan'] ?? 0)) ?>" method="post"
+        class="row g-3">
+        <?= csrf_field() ?>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Mode Potongan Tidak Ikut</label>
+          <select name="potongan_tidak_ikut_mode" class="form-select" required>
+            <?php $mode = $kegiatan['potongan_tidak_ikut_mode'] ?? 'activity_based'; ?>
+            <option value="activity_based" <?= $mode === 'activity_based' ? 'selected' : '' ?>>Berdasar keaktifan di
+              kegiatan
+              lain</option>
+            <option value="always" <?= $mode === 'always' ? 'selected' : '' ?>>Selalu terapkan</option>
+            <option value="none" <?= $mode === 'none' ? 'selected' : '' ?>>Tidak diterapkan</option>
+          </select>
+          <small class="text-muted">Aturan penerapan potongan tidak ikut kongan</small>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Nominal Potongan Tidak Ikut</label>
+          <div class="input-group">
+            <span class="input-group-text">Rp</span>
+            <input type="text" name="potongan_tidak_ikut_amount" class="form-control"
+              value="<?= number_format((int)($kegiatan['potongan_tidak_ikut_amount'] ?? 20000), 0, ',', '.') ?>" />
+          </div>
+          <small class="text-muted">Contoh: 20.000</small>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Potongan Undangan</label>
+          <div class="input-group">
+            <span class="input-group-text">Rp</span>
+            <input type="text" name="potongan_undangan_amount" class="form-control"
+              value="<?= number_format((int)($kegiatan['potongan_undangan_amount'] ?? 280000), 0, ',', '.') ?>" />
+          </div>
+          <small class="text-muted">Contoh: 280.000</small>
+        </div>
+        <div class="col-12 text-end">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Simpan Pengaturan
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 <?php endif; ?>

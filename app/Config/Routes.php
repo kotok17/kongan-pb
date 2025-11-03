@@ -56,6 +56,9 @@ $routes->group('kegiatan', ['filter' => 'auth'], function ($routes) {
   $routes->get('download_template_import', 'KegiatanController::download_template_import');
   $routes->get('export_pdf/(:num)', 'KegiatanController::export_pdf/$1');
   $routes->get('export_excel/(:num)', 'KegiatanController::export_excel/$1');
+
+  // Update Pengaturan
+  $routes->post('update_pengaturan/(:num)', 'KegiatanController::update_pengaturan/$1');
 });
 
 // Anggota routes
