@@ -1,5 +1,4 @@
 <?php
-// filepath: app/Models/DetailKegiatanModel.php
 
 namespace App\Models;
 
@@ -9,124 +8,139 @@ class DetailKegiatanModel extends Model
 {
   protected $table = 'kegiatan_detail';
   protected $primaryKey = 'id_detail_kegiatan';
-  protected $useAutoIncrement = true;
-  protected $returnType = 'array';
-  protected $useSoftDeletes = false;
-  protected $protectFields = true;
-  protected $allowedFields = [
-    'id_kegiatan',
-    'id_anggota',
-    'jumlah',
-    'created_at',
-    'updated_at'
-  ];
-
-  // Dates
-  protected $useTimestamps = true;
-  protected $dateFormat = 'datetime';
-  protected $createdField = 'created_at';
-  protected $updatedField = 'updated_at';
-
-  // Validation
-  protected $validationRules = [
-    'id_kegiatan' => 'required|integer',
-    'id_anggota' => 'required|integer',
-    'jumlah' => 'required|integer|greater_than[0]'
-  ];
-
-  protected $validationMessages = [
-    'id_kegiatan' => [
-      'required' => 'ID Kegiatan harus diisi',
-      'integer' => 'ID Kegiatan harus berupa angka'
-    ],
-    'id_anggota' => [
-      'required' => 'Anggota harus dipilih',
-      'integer' => 'ID Anggota harus berupa angka'
-    ],
-    'jumlah' => [
-      'required' => 'Jumlah kongan harus diisi',
-      'integer' => 'Jumlah kongan harus berupa angka',
-      'greater_than' => 'Jumlah kongan harus lebih dari 0'
-    ]
-  ];
-
-  protected $skipValidation = false;
-  protected $cleanValidationRules = true;
-
-  // Callbacks
-  protected $allowCallbacks = true;
+  protected $allowedFields = ['id_kegiatan', 'id_anggota', 'jumlah', 'created_at', 'updated_at'];
+  protected $useTimestamps = false;
 
   /**
-   * Get detail kegiatan dengan informasi anggota
+   * Ambil data kongan berdasarkan ID kegiatan
+   * @param int $id_kegiatan
+   * @return array
    */
-  public function getDetailWithAnggota($idKegiatan)
+  public function getKonganByKegiatan($id_kegiatan)
   {
-    return $this->select('kegiatan_detail.*, anggota.nama_anggota, anggota.alamat, anggota.no_hp')
+    return $this->select('kegiatan_detail.*, anggota.nama_anggota')
       ->join('anggota', 'anggota.id_anggota = kegiatan_detail.id_anggota')
-      ->where('kegiatan_detail.id_kegiatan', $idKegiatan)
+      ->where('kegiatan_detail.id_kegiatan', $id_kegiatan)
       ->orderBy('kegiatan_detail.created_at', 'DESC')
       ->findAll();
   }
 
   /**
-   * Get total kongan untuk kegiatan tertentu
+   * Ambil aktivitas anggota di kegiatan lain (untuk bonus)
+   * @param int $id_anggota
+   * @return array
    */
-  public function getTotalKongan($idKegiatan)
+  public function getAktivitasAnggota($id_anggota)
   {
-    $result = $this->select('COALESCE(SUM(jumlah), 0) as total')
-      ->where('id_kegiatan', $idKegiatan)
+    return $this->db->table('kegiatan_detail')
+      ->select('kegiatan_detail.*, kegiatan.nama_kegiatan, kegiatan.tanggal_kegiatan')
+      ->join('kegiatan', 'kegiatan.id_kegiatan = kegiatan_detail.id_kegiatan')
+      ->where('kegiatan_detail.id_anggota', $id_anggota)
+      ->where('kegiatan.id_anggota !=', $id_anggota) // Bukan kegiatan sendiri
+      ->orderBy('kegiatan_detail.created_at', 'DESC')
       ->get()
-      ->getRow();
-
-    return $result ? (int)$result->total : 0;
+      ->getResultArray();
   }
 
   /**
-   * Get jumlah peserta untuk kegiatan tertentu
+   * Cek apakah anggota sudah memberikan kongan di kegiatan tertentu
+   * @param int $id_kegiatan
+   * @param int $id_anggota
+   * @return bool
    */
-  public function getTotalPeserta($idKegiatan)
+  public function isAlreadyContributed($id_kegiatan, $id_anggota)
   {
-    return $this->where('id_kegiatan', $idKegiatan)->countAllResults();
+    $result = $this->where('id_kegiatan', $id_kegiatan)
+      ->where('id_anggota', $id_anggota)
+      ->first();
+
+    return $result !== null;
   }
 
   /**
-   * Cek apakah anggota sudah memberikan kongan pada kegiatan ini
+   * Ambil total kongan per kegiatan
+   * @param int $id_kegiatan
+   * @return int
    */
-  public function isAnggotaExists($idKegiatan, $idAnggota)
+  public function getTotalKongan($id_kegiatan)
   {
-    return $this->where('id_kegiatan', $idKegiatan)
-      ->where('id_anggota', $idAnggota)
-      ->first() !== null;
+    $result = $this->selectSum('jumlah')
+      ->where('id_kegiatan', $id_kegiatan)
+      ->first();
+
+    return $result['jumlah'] ?? 0;
   }
 
   /**
-   * Get kongan yang diberikan oleh anggota tertentu
+   * Ambil jumlah peserta per kegiatan
+   * @param int $id_kegiatan
+   * @return int
    */
-  public function getKonganByAnggota($idAnggota)
+  public function countPeserta($id_kegiatan)
+  {
+    return $this->where('id_kegiatan', $id_kegiatan)->countAllResults();
+  }
+
+  /**
+   * Hapus semua kongan berdasarkan ID kegiatan
+   * @param int $id_kegiatan
+   * @return bool
+   */
+  public function deleteByKegiatan($id_kegiatan)
+  {
+    return $this->where('id_kegiatan', $id_kegiatan)->delete();
+  }
+
+  /**
+   * Ambil kongan terbesar dalam kegiatan
+   * @param int $id_kegiatan
+   * @return array|null
+   */
+  public function getHighestContribution($id_kegiatan)
+  {
+    return $this->select('kegiatan_detail.*, anggota.nama_anggota')
+      ->join('anggota', 'anggota.id_anggota = kegiatan_detail.id_anggota')
+      ->where('kegiatan_detail.id_kegiatan', $id_kegiatan)
+      ->orderBy('kegiatan_detail.jumlah', 'DESC')
+      ->first();
+  }
+
+  /**
+   * Ambil statistik kongan per anggota
+   * @param int $id_anggota
+   * @return array
+   */
+  public function getAnggotaStatistics($id_anggota)
+  {
+    $builder = $this->db->table($this->table);
+
+    $result = $builder->select('
+                COUNT(*) as total_kegiatan_ikut,
+                SUM(jumlah) as total_kongan_diberikan,
+                AVG(jumlah) as rata_rata_kongan,
+                MAX(jumlah) as kongan_terbesar,
+                MIN(jumlah) as kongan_terkecil
+            ')
+      ->where('id_anggota', $id_anggota)
+      ->get()
+      ->getRowArray();
+
+    return $result;
+  }
+
+  /**
+   * Ambil riwayat kongan anggota
+   * @param int $id_anggota
+   * @param int $limit
+   * @return array
+   */
+  public function getRiwayatKongan($id_anggota, $limit = 10)
   {
     return $this->select('kegiatan_detail.*, kegiatan.nama_kegiatan, kegiatan.tanggal_kegiatan')
       ->join('kegiatan', 'kegiatan.id_kegiatan = kegiatan_detail.id_kegiatan')
-      ->where('kegiatan_detail.id_anggota', $idAnggota)
+      ->where('kegiatan_detail.id_anggota', $id_anggota)
       ->orderBy('kegiatan_detail.created_at', 'DESC')
-      ->findAll();
-  }
-
-  /**
-   * Get statistik kongan per bulan
-   */
-  public function getStatistikBulanan($tahun = null)
-  {
-    $tahun = $tahun ?? date('Y');
-
-    return $this->select('
-                MONTH(kegiatan_detail.created_at) as bulan,
-                COUNT(*) as total_kongan,
-                SUM(kegiatan_detail.jumlah) as total_uang
-            ')
-      ->join('kegiatan', 'kegiatan.id_kegiatan = kegiatan_detail.id_kegiatan')
-      ->where('YEAR(kegiatan_detail.created_at)', $tahun)
-      ->groupBy('MONTH(kegiatan_detail.created_at)')
-      ->orderBy('bulan', 'ASC')
+      ->limit($limit)
       ->findAll();
   }
 }

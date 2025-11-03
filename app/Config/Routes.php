@@ -36,14 +36,30 @@ $routes->get('dashboard/anggota', 'DashboardController::anggota');
 
 // Kegiatan routes
 $routes->group('kegiatan', ['filter' => 'auth'], function ($routes) {
+  // List & Detail
   $routes->get('/', 'KegiatanController::index');
   $routes->get('detail/(:num)', 'KegiatanController::detail/$1');
+
+  // CRUD Kegiatan
+  $routes->get('tambah', 'KegiatanController::tambah_kegiatan');
+  $routes->post('simpan', 'KegiatanController::simpan');
+  $routes->get('edit/(:num)', 'KegiatanController::edit/$1');
+  $routes->post('update/(:num)', 'KegiatanController::update/$1');
+  $routes->delete('hapus/(:num)', 'KegiatanController::hapus/$1');
+
+  // Kongan Management
   $routes->post('tambah_kongan', 'KegiatanController::tambah_kongan');
   $routes->match(['post', 'delete'], 'hapus_kongan/(:num)', 'KegiatanController::hapus_kongan/$1');
+  $routes->post('import_kongan', 'KegiatanController::import_kongan');
+
+  // Template & Export
+  $routes->get('download_template_import', 'KegiatanController::download_template_import');
+  $routes->get('export_pdf/(:num)', 'KegiatanController::export_pdf/$1');
+  $routes->get('export_excel/(:num)', 'KegiatanController::export_excel/$1');
 });
 
 // Anggota routes
-$routes->group('anggota', function ($routes) {
+$routes->group('anggota', ['filter' => 'auth'], function ($routes) {
   $routes->get('/', 'AnggotaController::index');
   $routes->get('tambah', 'AnggotaController::tambah');
   $routes->post('simpan', 'AnggotaController::simpan');
@@ -53,7 +69,7 @@ $routes->group('anggota', function ($routes) {
 });
 
 // Undangan routes
-$routes->group('undangan', function ($routes) {
+$routes->group('undangan', ['filter' => 'auth'], function ($routes) {
   $routes->get('preview/(:num)', 'UndanganController::preview/$1');
   $routes->get('generate/(:num)', 'UndanganController::generate/$1');
 });
@@ -62,7 +78,7 @@ $routes->group('undangan', function ($routes) {
 $routes->get('forgot-password', 'ForgotPasswordController::index');
 $routes->post('forgot-password/process', 'ForgotPasswordController::process');
 
-// Tambahkan route ini
+// API Routes
 $routes->get('api/dashboard/stats', 'DashboardController::getStats');
 
 // User management routes (admin only)

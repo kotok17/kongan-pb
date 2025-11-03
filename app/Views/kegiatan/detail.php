@@ -42,35 +42,118 @@
     <?php if ($canManage): ?>
       <div class="row g-3 mb-4">
         <div class="col-md-4">
-          <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#modalKegiatan">
-            <i class="fas fa-plus me-2"></i>Tambah Kongan
-            <small class="d-block opacity-75">Tambah data kongan baru</small>
+          <button type="button" class="btn btn-primary w-100 h-100" data-bs-toggle="modal"
+            data-bs-target="#modalKegiatan">
+            <i class="fas fa-plus-circle me-2"></i>Tambah Kongan
+            <small class="d-block opacity-75">Input manual</small>
           </button>
         </div>
+
         <div class="col-md-4">
-          <form action="<?= base_url('/kegiatan/import_kongan') ?>" method="post" enctype="multipart/form-data"
-            class="h-100">
-            <?= csrf_field() ?>
-            <input type="hidden" name="id_kegiatan" value="<?= esc($kegiatan['id_kegiatan'] ?? 0); ?>">
-            <input type="file" name="file" accept=".csv,.xlsx" required style="display:none;" id="importFile">
-            <button type="button" class="btn btn-success w-100 h-100" id="btnImport">
-              <i class="fas fa-file-import me-2"></i>Import Kongan
-              <small class="d-block opacity-75">Upload file Excel/CSV</small>
-            </button>
-          </form>
+          <button type="button" class="btn btn-success w-100 h-100" data-bs-toggle="modal" data-bs-target="#modalImport">
+            <i class="fas fa-file-import me-2"></i>Import Excel
+            <small class="d-block opacity-75">Upload file Excel/CSV</small>
+          </button>
         </div>
+
         <div class="col-md-4">
-          <div class="btn-group w-100 h-100" role="group">
-            <a href="<?= base_url('/undangan/preview/' . ($kegiatan['id_kegiatan'] ?? 0)) ?>" class="btn btn-info"
-              target="_blank" style="flex: 1;">
-              <i class="fas fa-eye me-1"></i>Preview
-            </a>
-            <a href="<?= base_url('/undangan/generate/' . ($kegiatan['id_kegiatan'] ?? 0)) ?>" class="btn btn-warning"
-              target="_blank" style="flex: 1;">
-              <i class="fas fa-file-pdf me-1"></i>PDF
-            </a>
+          <div class="dropdown w-100 h-100">
+            <button class="btn btn-warning w-100 h-100 dropdown-toggle" type="button" id="dropdownExport"
+              data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-download me-2"></i>Export Hasil
+              <small class="d-block opacity-75">PDF & Excel</small>
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownExport">
+              <li>
+                <a class="dropdown-item" href="<?= base_url('/kegiatan/export_pdf/' . ($kegiatan['id_kegiatan'] ?? 0)) ?>"
+                  target="_blank">
+                  <i class="fas fa-file-pdf text-danger me-2"></i>Export PDF
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item"
+                  href="<?= base_url('/kegiatan/export_excel/' . ($kegiatan['id_kegiatan'] ?? 0)) ?>" target="_blank">
+                  <i class="fas fa-file-excel text-success me-2"></i>Export Excel
+                </a>
+              </li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li>
+                <a class="dropdown-item" href="#" onclick="printResults()">
+                  <i class="fas fa-print text-primary me-2"></i>Print Langsung
+                </a>
+              </li>
+            </ul>
           </div>
-          <small class="d-block opacity-75 text-center mt-1">Generate surat undangan</small>
+        </div>
+      </div>
+
+      <!-- Modal Import Excel -->
+      <div class="modal fade" id="modalImport" tabindex="-1" aria-labelledby="modalImportLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+              <h5 class="modal-title" id="modalImportLabel">
+                <i class="fas fa-file-import me-2"></i>Import Data Kongan
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= base_url('kegiatan/import_kongan') ?>" method="post" enctype="multipart/form-data">
+              <?= csrf_field() ?>
+              <input type="hidden" name="id_kegiatan" value="<?= $kegiatan['id_kegiatan'] ?? 0 ?>">
+
+              <div class="modal-body">
+                <!-- Download Template Section -->
+                <div class="alert alert-info mb-3">
+                  <h6 class="alert-heading mb-2">
+                    <i class="fas fa-info-circle me-2"></i>Petunjuk Import
+                  </h6>
+                  <ol class="mb-2 small">
+                    <li>Download template format import terlebih dahulu</li>
+                    <li>Isi data sesuai format yang ada di template</li>
+                    <li>Simpan file dalam format Excel (.xlsx) atau CSV</li>
+                    <li>Upload file yang sudah diisi melalui form ini</li>
+                  </ol>
+                  <a href="<?= base_url('kegiatan/download_template_import') ?>" class="btn btn-sm btn-outline-info w-100"
+                    target="_blank">
+                    <i class="fas fa-download me-2"></i>Download Template Import
+                  </a>
+                </div>
+
+                <!-- File Upload -->
+                <div class="mb-3">
+                  <label for="file" class="form-label fw-bold">
+                    <i class="fas fa-file-excel me-2"></i>Pilih File Excel/CSV
+                  </label>
+                  <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls,.csv" required>
+                  <div class="form-text">
+                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                    Format yang didukung: .xlsx, .xls, .csv (Max 2MB)
+                  </div>
+                </div>
+
+                <!-- Preview Info -->
+                <div class="card bg-light">
+                  <div class="card-body py-2">
+                    <small class="text-muted">
+                      <i class="fas fa-lightbulb me-1"></i>
+                      <strong>Tips:</strong> Pastikan nama anggota di file sesuai dengan nama yang terdaftar di sistem
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                  <i class="fas fa-times me-2"></i>Batal
+                </button>
+                <button type="submit" class="btn btn-success">
+                  <i class="fas fa-upload me-2"></i>Upload & Import
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     <?php else: ?>
@@ -131,7 +214,7 @@
     </div>
   <?php endif ?>
 </div>
-
+<br>
 <!-- Kegiatan Info Card -->
 <div class="card shadow-sm mb-4">
   <div class="card-body">
@@ -144,22 +227,13 @@
           </h5>
           <div class="info-grid">
             <?php if (isset($kegiatan) && !empty($kegiatan)): ?>
-              <div class="info-item">
-                <strong>Nama Kegiatan:</strong>
-                <?= esc($kegiatan['nama_kegiatan'] ?? 'Tidak diketahui') ?>
-              </div>
-              <div class="info-item">
-                <strong>Penyelenggara:</strong>
-                <?= esc($kegiatan['nama_anggota'] ?? 'Tidak diketahui') ?>
-              </div>
-              <div class="info-item">
-                <strong>Tanggal:</strong>
-                <?= isset($kegiatan['tanggal_kegiatan']) ? date('d/m/Y', strtotime($kegiatan['tanggal_kegiatan'])) : 'Tidak diketahui' ?>
-              </div>
-              <div class="info-item">
-                <strong>Deskripsi:</strong>
-                <?= esc($kegiatan['deskripsi'] ?? 'Tidak ada deskripsi') ?>
-              </div>
+
+              <strong>Penyelenggara:</strong>
+              <?= esc($kegiatan['nama_anggota'] ?? 'Tidak diketahui') ?>
+              <strong>Tanggal:</strong>
+              <?= isset($kegiatan['tanggal_kegiatan']) ? date('d/m/Y', strtotime($kegiatan['tanggal_kegiatan'])) : 'Tidak diketahui' ?>
+              <strong>Deskripsi:</strong>
+              <?= esc($kegiatan['deskripsi'] ?? 'Tidak ada deskripsi') ?>
             <?php else: ?>
               <div class="alert alert-warning">Data kegiatan tidak tersedia</div>
             <?php endif; ?>
