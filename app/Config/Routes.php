@@ -45,20 +45,18 @@ $routes->group('kegiatan', ['filter' => 'auth'], function ($routes) {
   $routes->post('simpan', 'KegiatanController::simpan');
   $routes->get('edit/(:num)', 'KegiatanController::edit/$1');
   $routes->post('update/(:num)', 'KegiatanController::update/$1');
-  $routes->delete('hapus/(:num)', 'KegiatanController::hapus/$1');
+  $routes->match(['post', 'delete'], 'hapus/(:num)', 'KegiatanController::hapus/$1');
 
   // Kongan Management
   $routes->post('tambah_kongan', 'KegiatanController::tambah_kongan');
   $routes->match(['post', 'delete'], 'hapus_kongan/(:num)', 'KegiatanController::hapus_kongan/$1');
   $routes->post('import_kongan', 'KegiatanController::import_kongan');
+  $routes->post('update_pengaturan/(:num)', 'KegiatanController::update_pengaturan/$1');
 
   // Template & Export
   $routes->get('download_template_import', 'KegiatanController::download_template_import');
   $routes->get('export_pdf/(:num)', 'KegiatanController::export_pdf/$1');
   $routes->get('export_excel/(:num)', 'KegiatanController::export_excel/$1');
-
-  // Update Pengaturan
-  $routes->post('update_pengaturan/(:num)', 'KegiatanController::update_pengaturan/$1');
 });
 
 // Anggota routes

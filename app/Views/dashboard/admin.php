@@ -41,7 +41,7 @@
               <i class="fas fa-calendar-alt fa-lg text-white"></i>
             </div>
             <h3 class="fw-bold text-primary mb-1 counter" data-target="<?= $total_kegiatan ?? '0' ?>"
-              id="total-kegiatan"><?= number_format($total_kegiatan) ?></h3>
+              id="total-kegiatan"><?= number_format($total_kegiatan, 0, ',', '.') ?></h3>
             <p class="text-muted mb-0 small fw-medium">Total Kegiatan</p>
           </div>
         </div>
@@ -55,27 +55,28 @@
               <i class="fas fa-users fa-lg text-white"></i>
             </div>
             <h3 class="fw-bold text-success mb-1 counter" data-target="<?= $total_anggota ?? '0' ?>" id="total-anggota">
-              <?= number_format($total_anggota) ?></h3>
+              <?= number_format($total_anggota, 0, ',', '.') ?></h3>
             <p class="text-muted mb-0 small fw-medium">Total Anggota</p>
           </div>
         </div>
       </div>
 
-      <!-- Total Uang Card -->
-      <!-- <div class="stats-card-wrapper">
+      <!-- Total Uang Card - PERBAIKAN DI SINI -->
+      <div class="stats-card-wrapper">
         <div class="card border-0 shadow-sm card-hover stats-card">
           <div class="card-body text-center p-4">
             <div class="stats-icon bg-info mb-3">
               <i class="fas fa-money-bill-wave fa-lg text-white"></i>
             </div>
-            <h3 class="fw-bold text-info mb-1" id="total-uang">
-              Rp <span class="counter"
-                data-target="<?= ($total_uang ?? 0) / 100 ?>"><?= number_format($total_uang ?? 0, 0, ',', '.') ?></span>K
-            </h3>
-            <p class="text-muted mb-0 small fw-medium">Total Uang</p>
+            <div class="mb-1">
+              <h3 class="fw-bold text-info mb-0 d-inline" id="total-uang-display">
+                Rp <?= number_format($total_uang ?? 0, 0, ',', '.') ?>
+              </h3>
+            </div>
+            <p class="text-muted mb-0 small fw-medium">Total Uang Kongan</p>
           </div>
         </div>
-      </div> -->
+      </div>
     </div>
   </div>
 </div>
@@ -917,27 +918,61 @@
     color: #6f42c1 !important;
     border-radius: 6px !important;
   }
+
+  /* Stats Card Number - Responsive Font Size */
+  .stats-card h3 {
+    font-size: clamp(1.5rem, 2.5vw, 1.75rem);
+    line-height: 1.2;
+  }
+
+  /* Total Uang specific styling */
+  #total-uang-display {
+    font-size: clamp(1.3rem, 2.2vw, 1.6rem);
+    word-break: break-word;
+  }
 </style>
 
 <script>
-  // Counter Animation
+  // Counter Animation - PERBAIKAN
   function animateCounters() {
-    const counters = document.querySelectorAll('.counter');
+    // Animate Total Kegiatan
+    const kegiatanElement = document.getElementById('total-kegiatan');
+    const kegiatanTarget = parseInt(kegiatanElement.getAttribute('data-target')) || 0;
+    animateSingleCounter(kegiatanElement, kegiatanTarget, false);
 
-    counters.forEach(counter => {
-      const target = parseInt(counter.getAttribute('data-target')) || parseInt(counter.textContent);
-      const increment = target / 100;
-      let current = 0;
+    // Animate Total Anggota  
+    const anggotaElement = document.getElementById('total-anggota');
+    const anggotaTarget = parseInt(anggotaElement.getAttribute('data-target')) || 0;
+    animateSingleCounter(anggotaElement, anggotaTarget, false);
 
-      const timer = setInterval(() => {
-        current += increment;
-        if (current >= target) {
-          current = target;
-          clearInterval(timer);
-        }
-        counter.textContent = Math.floor(current).toLocaleString('id-ID');
-      }, 20);
-    });
+    // Animate Total Uang - FORMAT RUPIAH
+    const uangElement = document.getElementById('total-uang-display');
+    const uangTarget = <?= $total_uang ?? 0 ?>;
+    animateSingleCounter(uangElement, uangTarget, true);
+  }
+
+  function animateSingleCounter(element, target, isRupiah = false) {
+    const duration = 2000; // 2 detik
+    const steps = 60;
+    const increment = target / steps;
+    let current = 0;
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step++;
+      current += increment;
+
+      if (step >= steps) {
+        current = target;
+        clearInterval(timer);
+      }
+
+      if (isRupiah) {
+        element.innerHTML = 'Rp ' + Math.floor(current).toLocaleString('id-ID');
+      } else {
+        element.textContent = Math.floor(current).toLocaleString('id-ID');
+      }
+    }, duration / steps);
   }
 
   // Real-time clock update
@@ -970,36 +1005,29 @@
     fetch('<?= base_url('api/dashboard/stats') ?>')
       .then(response => response.json())
       .then(data => {
-        // Update counter dengan animasi
-        animateCounter('total-kegiatan', data.total_kegiatan);
-        animateCounter('total-anggota', data.total_anggota);
-        animateCounter('total-uang', data.total_uang);
-        animateCounter('kegiatan-bulan-ini', data.kegiatan_bulan_ini);
+        // Update Total Kegiatan
+        const kegiatanEl = document.getElementById('total-kegiatan');
+        if (kegiatanEl) {
+          animateSingleCounter(kegiatanEl, data.total_kegiatan || 0, false);
+        }
+
+        // Update Total Anggota
+        const anggotaEl = document.getElementById('total-anggota');
+        if (anggotaEl) {
+          animateSingleCounter(anggotaEl, data.total_anggota || 0, false);
+        }
+
+        // Update Total Uang
+        const uangEl = document.getElementById('total-uang-display');
+        if (uangEl) {
+          animateSingleCounter(uangEl, data.total_uang || 0, true);
+        }
+
+        updateRefreshIndicator();
       })
-      .catch(error => console.log('Error refreshing stats:', error));
-  }
-
-  function animateCounter(elementId, newValue) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-
-    const currentValue = parseInt(element.textContent.replace(/[^\d]/g, ''));
-    const increment = Math.ceil((newValue - currentValue) / 20);
-
-    let counter = currentValue;
-    const timer = setInterval(() => {
-      counter += increment;
-      if (counter >= newValue) {
-        counter = newValue;
-        clearInterval(timer);
-      }
-
-      if (elementId === 'total-uang') {
-        element.textContent = 'Rp ' + counter.toLocaleString('id-ID');
-      } else {
-        element.textContent = counter.toLocaleString('id-ID');
-      }
-    }, 50);
+      .catch(error => {
+        console.log('Error refreshing stats:', error);
+      });
   }
 
   // Initialize when page loads

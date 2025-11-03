@@ -500,37 +500,49 @@
     </div>
     <div class="card-body">
       <form action="<?= base_url('kegiatan/update_pengaturan/' . ($kegiatan['id_kegiatan'] ?? 0)) ?>" method="post"
-        class="row g-3">
+        class="row g-3" id="formPengaturan">
         <?= csrf_field() ?>
         <div class="col-md-4">
-          <label class="form-label fw-semibold">Mode Potongan Tidak Ikut</label>
+          <label class="form-label fw-semibold">
+            Mode Potongan Tidak Ikut <span class="text-danger">*</span>
+          </label>
           <select name="potongan_tidak_ikut_mode" class="form-select" required>
             <?php $mode = $kegiatan['potongan_tidak_ikut_mode'] ?? 'activity_based'; ?>
-            <option value="activity_based" <?= $mode === 'activity_based' ? 'selected' : '' ?>>Berdasar keaktifan di
-              kegiatan
-              lain</option>
-            <option value="always" <?= $mode === 'always' ? 'selected' : '' ?>>Selalu terapkan</option>
-            <option value="none" <?= $mode === 'none' ? 'selected' : '' ?>>Tidak diterapkan</option>
+            <option value="activity_based" <?= $mode === 'activity_based' ? 'selected' : '' ?>>
+              Berdasar keaktifan di kegiatan lain
+            </option>
+            <option value="always" <?= $mode === 'always' ? 'selected' : '' ?>>
+              Selalu terapkan
+            </option>
+            <option value="none" <?= $mode === 'none' ? 'selected' : '' ?>>
+              Tidak diterapkan
+            </option>
           </select>
           <small class="text-muted">Aturan penerapan potongan tidak ikut kongan</small>
         </div>
         <div class="col-md-4">
-          <label class="form-label fw-semibold">Nominal Potongan Tidak Ikut</label>
+          <label class="form-label fw-semibold">
+            Nominal Potongan Tidak Ikut <span class="text-danger">*</span>
+          </label>
           <div class="input-group">
             <span class="input-group-text">Rp</span>
             <input type="text" name="potongan_tidak_ikut_amount" class="form-control"
-              value="<?= number_format((int)($kegiatan['potongan_tidak_ikut_amount'] ?? 20000), 0, ',', '.') ?>" />
+              value="<?= number_format((int)($kegiatan['potongan_tidak_ikut_amount'] ?? 20000), 0, ',', '.') ?>" required
+              placeholder="20.000" />
           </div>
-          <small class="text-muted">Contoh: 20.000</small>
+          <small class="text-muted">Masukkan angka, format otomatis. Contoh: 20000</small>
         </div>
         <div class="col-md-4">
-          <label class="form-label fw-semibold">Potongan Undangan</label>
+          <label class="form-label fw-semibold">
+            Potongan Undangan <span class="text-danger">*</span>
+          </label>
           <div class="input-group">
             <span class="input-group-text">Rp</span>
             <input type="text" name="potongan_undangan_amount" class="form-control"
-              value="<?= number_format((int)($kegiatan['potongan_undangan_amount'] ?? 280000), 0, ',', '.') ?>" />
+              value="<?= number_format((int)($kegiatan['potongan_undangan_amount'] ?? 280000), 0, ',', '.') ?>" required
+              placeholder="280.000" />
           </div>
-          <small class="text-muted">Contoh: 280.000</small>
+          <small class="text-muted">Masukkan angka, format otomatis. Contoh: 280000</small>
         </div>
         <div class="col-12 text-end">
           <button type="submit" class="btn btn-primary">
@@ -656,6 +668,87 @@
     }
 
     <?php if ($canManage): ?>
+      // Format input untuk potongan - TAMBAHAN BARU
+      $('input[name="potongan_tidak_ikut_amount"], input[name="potongan_undangan_amount"]').on('input', function() {
+        let value = this.value.replace(/[^0-9]/g, '');
+        this.value = formatRupiah(value);
+      });
+
+      // Handle submit form pengaturan
+      $('form[action*="update_pengaturan"]').on('submit', function(e) {
+        e.preventDefault();
+
+        // Ambil nilai dan bersihkan format
+        let tidakIkutAmount = $('input[name="potongan_tidak_ikut_amount"]').val().replace(/[^0-9]/g, '');
+        let undanganAmount = $('input[name="potongan_undangan_amount"]').val().replace(/[^0-9]/g, '');
+
+        // Validasi
+        if (!tidakIkutAmount || !undanganAmount) {
+          Swal.fire({
+            title: 'Peringatan!',
+            text: 'Semua field nominal harus diisi!',
+            icon: 'warning',
+            confirmButtonText: 'OK'
+          });
+          return false;
+        }
+
+        // Konfirmasi
+        Swal.fire({
+          title: 'Simpan Pengaturan?',
+          html: `
+            <div class="text-start">
+              <p class="mb-3">Pengaturan potongan yang akan disimpan:</p>
+              <table class="table table-sm">
+                <tr>
+                  <td><strong>Mode Potongan Tidak Ikut:</strong></td>
+                  <td>${$('select[name="potongan_tidak_ikut_mode"] option:selected').text()}</td>
+                </tr>
+                <tr>
+                  <td><strong>Nominal Tidak Ikut:</strong></td>
+                  <td>Rp ${formatRupiah(tidakIkutAmount)}</td>
+                </tr>
+                <tr>
+                  <td><strong>Potongan Undangan:</strong></td>
+                  <td>Rp ${formatRupiah(undanganAmount)}</td>
+                </tr>
+              </table>
+              <div class="alert alert-info small mb-0">
+                <i class="fas fa-info-circle me-1"></i>
+                Pengaturan ini akan mempengaruhi perhitungan total bersih kegiatan ini.
+              </div>
+            </div>
+          `,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#3085d6',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: '<i class="fas fa-save me-1"></i> Ya, Simpan!',
+          cancelButtonText: '<i class="fas fa-times me-1"></i> Batal',
+          reverseButtons: true
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // Set nilai murni (tanpa format) sebelum submit
+            $('input[name="potongan_tidak_ikut_amount"]').val(tidakIkutAmount);
+            $('input[name="potongan_undangan_amount"]').val(undanganAmount);
+
+            // Show loading
+            Swal.fire({
+              title: 'Menyimpan...',
+              text: 'Mohon tunggu sebentar',
+              allowOutsideClick: false,
+              allowEscapeKey: false,
+              didOpen: () => {
+                Swal.showLoading();
+              }
+            });
+
+            // Submit form
+            this.submit();
+          }
+        });
+      });
+
       // Modal handling
       $('#modalKegiatan').on('shown.bs.modal', function() {
         $('#id_anggota').select2({

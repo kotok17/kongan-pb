@@ -330,38 +330,65 @@ class KegiatanController extends BaseController
 
   public function hapus($id)
   {
-    $kegiatan = $this->kegiatanModel->find($id);
-
-    if (!$kegiatan) {
+    // Cek AJAX request
+    if (!$this->request->isAJAX()) {
       return $this->response->setJSON([
         'success' => false,
-        'message' => 'Kegiatan tidak ditemukan!'
+        'message' => 'Invalid request type'
       ]);
     }
 
-    // Cek akses - admin bisa hapus semua, anggota hanya miliknya
-    if (session()->get('role') !== 'admin' && $kegiatan['id_anggota'] != session()->get('id_anggota')) {
+    // Cek apakah user admin
+    if (session()->get('role') !== 'admin') {
       return $this->response->setJSON([
         'success' => false,
-        'message' => 'Anda tidak memiliki akses untuk menghapus kegiatan ini!'
+        'message' => 'Akses ditolak! Hanya admin yang bisa menghapus kegiatan.'
       ]);
     }
 
-    $db = \Config\Database::connect();
+    try {
+      // Cek apakah kegiatan ada
+      $kegiatan = $this->kegiatanModel->find($id);
 
-    // Hapus detail kegiatan dulu
-    $db->table('kegiatan_detail')->where('id_kegiatan', $id)->delete();
+      if (!$kegiatan) {
+        return $this->response->setJSON([
+          'success' => false,
+          'message' => 'Kegiatan tidak ditemukan!'
+        ]);
+      }
 
-    // Kemudian hapus kegiatan
-    if ($this->kegiatanModel->delete($id)) {
-      return $this->response->setJSON([
-        'success' => true,
-        'message' => 'Kegiatan berhasil dihapus!'
-      ]);
-    } else {
+      // VALIDASI: CEK APAKAH ADA DATA KONGAN
+      $db = \Config\Database::connect();
+      $detailKongan = $db->table('kegiatan_detail')
+        ->where('id_kegiatan', $id)
+        ->countAllResults();
+
+      if ($detailKongan > 0) {
+        return $this->response->setJSON([
+          'success' => false,
+          'message' => "Kegiatan tidak dapat dihapus!<br>Terdapat <strong>{$detailKongan} data kongan</strong> yang terkait.<br><small class='text-muted'>Hapus semua data kongan terlebih dahulu.</small>",
+          'has_data' => true,
+          'total_kongan' => $detailKongan
+        ]);
+      }
+
+      // Hapus kegiatan (data kongan sudah kosong)
+      if ($this->kegiatanModel->delete($id)) {
+        return $this->response->setJSON([
+          'success' => true,
+          'message' => 'Kegiatan berhasil dihapus!'
+        ]);
+      } else {
+        return $this->response->setJSON([
+          'success' => false,
+          'message' => 'Gagal menghapus kegiatan dari database'
+        ]);
+      }
+    } catch (\Exception $e) {
+      log_message('error', 'Error deleting kegiatan: ' . $e->getMessage());
       return $this->response->setJSON([
         'success' => false,
-        'message' => 'Gagal menghapus kegiatan!'
+        'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
       ]);
     }
   }
@@ -446,13 +473,25 @@ class KegiatanController extends BaseController
     if ($amountTidakIkut < 0) $amountTidakIkut = 0;
     if ($amountUndangan < 0) $amountUndangan = 0;
 
-    $this->kegiatanModel->update($id_kegiatan, [
-      'potongan_tidak_ikut_mode'   => $mode,
-      'potongan_tidak_ikut_amount' => $amountTidakIkut,
-      'potongan_undangan_amount'   => $amountUndangan,
-    ]);
+    try {
+      $updated = $this->kegiatanModel->update($id_kegiatan, [
+        'potongan_tidak_ikut_mode'   => $mode,
+        'potongan_tidak_ikut_amount' => $amountTidakIkut,
+        'potongan_undangan_amount'   => $amountUndangan,
+      ]);
 
-    return redirect()->to('/kegiatan/detail/' . $id_kegiatan)->with('success', 'Pengaturan potongan berhasil disimpan');
+      if ($updated) {
+        return redirect()->to('/kegiatan/detail/' . $id_kegiatan)
+          ->with('success', 'Pengaturan potongan berhasil disimpan');
+      } else {
+        return redirect()->back()
+          ->with('error', 'Gagal menyimpan pengaturan. Tidak ada perubahan data.');
+      }
+    } catch (\Exception $e) {
+      log_message('error', 'Error update pengaturan: ' . $e->getMessage());
+      return redirect()->back()
+        ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+    }
   }
 
   public function export_pdf($id_kegiatan)
