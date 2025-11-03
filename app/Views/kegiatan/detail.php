@@ -455,7 +455,7 @@
               <label for="id_anggota" class="form-label">
                 <i class="fas fa-user me-1"></i>Nama Anggota <span class="text-danger">*</span>
               </label>
-              <select name="id_anggota" id="id_anggota" class="form-control select2" required>
+              <select name="id_anggota" id="id_anggota" class="form-control" required>
                 <option value="" disabled selected>-Pilih Anggota-</option>
                 <?php foreach ($anggota as $row): ?>
                   <option value="<?= esc($row['id_anggota']) ?>">
@@ -463,7 +463,7 @@
                   </option>
                 <?php endforeach; ?>
               </select>
-              <small class="text-muted">Pilih anggota yang memberikan kongan</small>
+              <!-- <small class="text-muted">Pilih anggota yang memberikan kongan</small> -->
             </div>
             <div class="mb-3">
               <label for="jumlah" class="form-label">
@@ -628,6 +628,10 @@
   }
 </style>
 
+<!-- ✅ 1. Tambahkan CSS Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2-bootstrap4.min.css" rel="stylesheet" />
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
   $(document).ready(function() {
@@ -749,17 +753,22 @@
         });
       });
 
-      // Modal handling
+      // ✅ 2. Inisialisasi Select2 saat modal dibuka
       $('#modalKegiatan').on('shown.bs.modal', function() {
+        if ($('#id_anggota').hasClass("select2-hidden-accessible")) {
+          $('#id_anggota').select2('destroy');
+        }
         $('#id_anggota').select2({
           theme: 'bootstrap4',
           dropdownParent: $('#modalKegiatan'),
           placeholder: '-Pilih Anggota-',
+          minimumInputLength: 1, // Aktifkan pencarian
           allowClear: true,
           width: '100%'
         });
       });
 
+      // ✅ 3. Hapus Select2 saat modal ditutup
       $('#modalKegiatan').on('hidden.bs.modal', function() {
         if ($('#id_anggota').hasClass("select2-hidden-accessible")) {
           $('#id_anggota').select2('destroy');
@@ -980,15 +989,7 @@
   }
 </script>
 
-<style>
-  /* Custom SweetAlert styling */
-  .swal-wide {
-    width: 600px !important;
-  }
-
-  .swal2-html-container {
-    text-align: left !important;
-  }
-</style>
+<!-- ✅ 4. Tambahkan JS Select2 -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <?= $this->endSection() ?>
