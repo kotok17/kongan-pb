@@ -14,6 +14,7 @@ class KegiatanController extends BaseController
   {
     $this->kegiatanModel = new KegiatanModel();
     $this->anggotaModel = new AnggotaModel();
+    $this->db = \Config\Database::connect();
   }
 
   public function index()
@@ -408,31 +409,92 @@ class KegiatanController extends BaseController
 
   public function hapus_kongan($id)
   {
-    $db = \Config\Database::connect();
+    // Debug log untuk melihat apa yang terjadi
+    log_message('info', 'Hapus kongan called with ID: ' . $id);
+    log_message('info', 'User role: ' . session()->get('role'));
+    log_message('info', 'Request method: ' . $this->request->getMethod());
 
-    $kongan = $db->table('kegiatan_detail')
-      ->where('id_detail_kegiatan', $id) // PERBAIKI: gunakan 'id_detail_kegiatan' bukan 'id_detail_kongan'
-      ->get()
-      ->getRowArray();
-
-    if (!$kongan) {
-      return redirect()->back()
-        ->with('error', 'Data kongan tidak ditemukan!');
+    // Pastikan request method benar
+    if (!$this->request->isAJAX()) {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Invalid request type'
+      ]);
     }
 
-    // Cek akses melalui kegiatan
-    $kegiatan = $this->kegiatanModel->find($kongan['id_kegiatan']);
-    if (session()->get('role') !== 'admin' && $kegiatan['id_anggota'] != session()->get('id_anggota')) {
-      return redirect()->back()
-        ->with('error', 'Anda tidak memiliki akses untuk menghapus kongan ini!');
-    }
+    try {
+      // Cek apakah user memiliki akses
+      $role = session()->get('role');
+      if ($role !== 'admin' && $role !== 'superadmin') {
+        // Jika bukan admin/superadmin, cek kepemilikan
+        $detailKongan = $this->db->table('kegiatan_detail')
+          ->select('kegiatan_detail.*, kegiatan.id_anggota')
+          ->join('kegiatan', 'kegiatan.id_kegiatan = kegiatan_detail.id_kegiatan')
+          ->where('kegiatan_detail.id_detail_kegiatan', $id)
+          ->get()
+          ->getRowArray();
 
-    if ($db->table('kegiatan_detail')->delete(['id_detail_kegiatan' => $id])) {
-      return redirect()->to('/kegiatan/detail/' . $kongan['id_kegiatan'])
-        ->with('success', 'Kongan berhasil dihapus!');
-    } else {
-      return redirect()->back()
-        ->with('error', 'Gagal menghapus kongan!');
+        if (!$detailKongan || $detailKongan['id_anggota'] != session()->get('id_anggota')) {
+          return $this->response->setJSON([
+            'success' => false,
+            'message' => 'Anda tidak memiliki akses untuk menghapus data ini!'
+          ]);
+        }
+      }
+
+      // Ambil data detail kongan untuk log
+      $konganDetail = $this->db->table('kegiatan_detail')
+        ->select('kegiatan_detail.*, anggota.nama_anggota, kegiatan.nama_kegiatan')
+        ->join('anggota', 'anggota.id_anggota = kegiatan_detail.id_anggota')
+        ->join('kegiatan', 'kegiatan.id_kegiatan = kegiatan_detail.id_kegiatan')
+        ->where('kegiatan_detail.id_detail_kegiatan', $id)
+        ->get()
+        ->getRowArray();
+
+      if (!$konganDetail) {
+        return $this->response->setJSON([
+          'success' => false,
+          'message' => 'Data kongan tidak ditemukan!'
+        ]);
+      }
+
+      // Hapus data
+      $deleted = $this->db->table('kegiatan_detail')
+        ->where('id_detail_kegiatan', $id)
+        ->delete();
+
+      if ($deleted) {
+        // Log aktivitas
+        log_message('info', 'Kongan deleted: ' . json_encode([
+          'id_detail' => $id,
+          'nama_anggota' => $konganDetail['nama_anggota'],
+          'jumlah' => $konganDetail['jumlah'],
+          'nama_kegiatan' => $konganDetail['nama_kegiatan'],
+          'deleted_by' => session()->get('username')
+        ]));
+
+        return $this->response->setJSON([
+          'success' => true,
+          'message' => 'Kongan berhasil dihapus!',
+          'data' => [
+            'nama_anggota' => $konganDetail['nama_anggota'],
+            'jumlah' => $konganDetail['jumlah']
+          ]
+        ]);
+      } else {
+        return $this->response->setJSON([
+          'success' => false,
+          'message' => 'Gagal menghapus data kongan!'
+        ]);
+      }
+    } catch (\Exception $e) {
+      log_message('error', 'Error hapus kongan: ' . $e->getMessage());
+      log_message('error', 'Error trace: ' . $e->getTraceAsString());
+
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+      ]);
     }
   }
 }

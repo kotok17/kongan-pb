@@ -37,14 +37,9 @@ $routes->get('dashboard/anggota', 'DashboardController::anggota');
 // Kegiatan routes
 $routes->group('kegiatan', ['filter' => 'auth'], function ($routes) {
   $routes->get('/', 'KegiatanController::index');
-  $routes->get('tambah', 'KegiatanController::tambah');
-  $routes->post('simpan', 'KegiatanController::simpan');
   $routes->get('detail/(:num)', 'KegiatanController::detail/$1');
-  $routes->get('edit/(:num)', 'KegiatanController::edit/$1');
-  $routes->post('update/(:num)', 'KegiatanController::update/$1');
-  $routes->delete('hapus/(:num)', 'KegiatanController::hapus/$1');
   $routes->post('tambah_kongan', 'KegiatanController::tambah_kongan');
-  $routes->match(['delete', 'post'], 'hapus_kongan/(:num)', 'KegiatanController::hapus_kongan/$1');
+  $routes->match(['post', 'delete'], 'hapus_kongan/(:num)', 'KegiatanController::hapus_kongan/$1');
 });
 
 // Anggota routes

@@ -217,14 +217,11 @@
                 </td>
                 <td class="text-center">
                   <?php if ($canManage): ?>
-                    <form action="<?= base_url('kegiatan/hapus_kongan/' . $row['id_detail_kegiatan']) ?>" method="post"
-                      style="display: inline;" onsubmit="return confirm('Yakin ingin menghapus kongan ini?')">
-                      <?= csrf_field() ?>
-                      <input type="hidden" name="_method" value="DELETE">
-                      <button type="submit" class="btn btn-danger btn-sm">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                    </form>
+                    <button type="button" class="btn btn-danger btn-sm btn-hapus-kongan"
+                      data-id="<?= $row['id_detail_kegiatan'] ?>" data-nama="<?= esc($row['nama_anggota']) ?>"
+                      data-jumlah="<?= number_format($row['jumlah'], 0, ',', '.') ?>" title="Hapus kongan">
+                      <i class="fas fa-trash"></i>
+                    </button>
                   <?php else: ?>
                     <span class="text-muted">
                       <i class="fas fa-eye" title="Hanya lihat"></i>
@@ -380,48 +377,6 @@
   </div>
 <?php endif; ?>
 
-<!-- Modal Tambah Kongan (Revised) -->
-<div class="modal fade" id="modalTambahKongan" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Tambah Kongan</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form action="<?= base_url('kegiatan/tambah_kongan') ?>" method="post">
-        <?= csrf_field() ?>
-        <div class="modal-body">
-          <input type="hidden" name="id_kegiatan" value="<?= $kegiatan['id_kegiatan'] ?? 0 ?>">
-          <div class="mb-3">
-            <label class="form-label">Anggota <span class="text-danger">*</span></label>
-            <select name="id_anggota" class="form-control" required>
-              <option value="">-Pilih Anggota-</option>
-              <?php if (isset($anggota) && !empty($anggota)): ?>
-                <?php foreach ($anggota as $row): ?>
-                  <option value="<?= $row['id_anggota'] ?>">
-                    <?= esc($row['nama_anggota']) ?>
-                  </option>
-                <?php endforeach; ?>
-              <?php endif; ?>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Jumlah (Rp) <span class="text-danger">*</span></label>
-            <input type="number" name="jumlah" class="form-control" required min="1000" step="1000"
-              placeholder="Contoh: 50000">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i> Simpan
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
 <style>
   /* Custom Styling */
   .kegiatan-info .info-grid {
@@ -476,12 +431,13 @@
     background-color: #f8f9fa !important;
   }
 
-  .btn-delete {
+  .btn-hapus-kongan {
     transition: all 0.3s ease;
   }
 
-  .btn-delete:hover {
+  .btn-hapus-kongan:hover {
     transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
   }
 
   @media (max-width: 768px) {
@@ -601,37 +557,98 @@
         }
       });
 
-      // Delete confirmation
-      $(document).on('click', '.btn-delete', function(e) {
+      // Event handler untuk button hapus kongan dengan SweetAlert
+      $(document).on('click', '.btn-hapus-kongan', function(e) {
         e.preventDefault();
-        const id = $(this).data('id');
 
+        const id = $(this).data('id');
+        const nama = $(this).data('nama');
+        const jumlah = $(this).data('jumlah');
+
+        // SweetAlert konfirmasi dengan detail
         Swal.fire({
-          title: 'Yakin ingin menghapus?',
-          text: "Data kongan akan dihapus permanen!",
+          title: 'Konfirmasi Hapus Kongan',
+          html: `
+            <div class="text-start">
+              <p class="mb-2"><strong>Apakah Anda yakin ingin menghapus kongan ini?</strong></p>
+              <div class="alert alert-warning mb-3">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Peringatan:</strong> Data yang dihapus tidak dapat dikembalikan!
+              </div>
+              <div class="card">
+                <div class="card-body">
+                  <p class="mb-1"><strong>Nama Anggota:</strong> ${nama}</p>
+                  <p class="mb-0"><strong>Jumlah Kongan:</strong> Rp ${jumlah}</p>
+                </div>
+              </div>
+            </div>
+          `,
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonColor: '#d33',
-          cancelButtonColor: '#3085d6',
-          confirmButtonText: 'Ya, hapus!',
-          cancelButtonText: 'Batal'
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: '<i class="fas fa-trash me-1"></i> Ya, Hapus!',
+          cancelButtonText: '<i class="fas fa-times me-1"></i> Batal',
+          reverseButtons: true,
+          customClass: {
+            popup: 'swal-wide'
+          }
         }).then((result) => {
           if (result.isConfirmed) {
+            // Tampilkan loading
+            Swal.fire({
+              title: 'Menghapus...',
+              text: 'Mohon tunggu sebentar',
+              allowOutsideClick: false,
+              allowEscapeKey: false,
+              didOpen: () => {
+                Swal.showLoading();
+              }
+            });
+
+            // Kirim request hapus
             fetch(`<?= base_url('/kegiatan/hapus_kongan/') ?>${id}`, {
-                method: 'DELETE',
+                method: 'POST',
                 headers: {
-                  'X-Requested-With': 'XMLHttpRequest',
-                  '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
-                }
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                  'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: `<?= csrf_token() ?>=<?= csrf_hash() ?>&_method=DELETE`
               })
-              .then(response => response.json())
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error('Network response was not ok');
+                }
+                return response.json();
+              })
               .then(data => {
                 if (data.success) {
-                  Swal.fire('Terhapus!', data.message, 'success')
-                    .then(() => location.reload());
+                  Swal.fire({
+                    title: 'Berhasil!',
+                    text: data.message || 'Kongan berhasil dihapus',
+                    icon: 'success',
+                    confirmButtonText: 'OK'
+                  }).then(() => {
+                    // Reload halaman untuk refresh data
+                    window.location.reload();
+                  });
                 } else {
-                  Swal.fire('Error!', data.message, 'error');
+                  Swal.fire({
+                    title: 'Gagal!',
+                    text: data.message || 'Terjadi kesalahan saat menghapus kongan',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                  });
                 }
+              })
+              .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                  title: 'Error!',
+                  text: 'Terjadi kesalahan jaringan. Silakan coba lagi.',
+                  icon: 'error',
+                  confirmButtonText: 'OK'
+                });
               });
           }
         });
@@ -645,15 +662,44 @@
 
       $(document).on('change', '#importFile', function(e) {
         if (this.files && this.files.length > 0) {
+          const fileName = this.files[0].name;
+          const fileSize = (this.files[0].size / 1024 / 1024).toFixed(2); // MB
+
           Swal.fire({
-            title: 'Mengupload file...',
-            text: 'Mohon tunggu sebentar',
-            allowOutsideClick: false,
-            didOpen: () => {
-              Swal.showLoading();
+            title: 'Konfirmasi Import',
+            html: `
+              <div class="text-start">
+                <p><strong>File yang akan diimport:</strong></p>
+                <div class="alert alert-info">
+                  <i class="fas fa-file me-2"></i>${fileName}<br>
+                  <small>Ukuran: ${fileSize} MB</small>
+                </div>
+                <p>Pastikan format file sudah sesuai template.</p>
+              </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-upload me-1"></i> Import Sekarang',
+            cancelButtonText: 'Batal'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              Swal.fire({
+                title: 'Mengupload file...',
+                text: 'Mohon tunggu, sedang memproses file import',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                  Swal.showLoading();
+                }
+              });
+              this.form.submit();
+            } else {
+              // Reset file input jika dibatalkan
+              this.value = '';
             }
           });
-          this.form.submit();
         }
       });
     <?php endif; ?>
@@ -675,5 +721,16 @@
     return rupiah;
   }
 </script>
+
+<style>
+  /* Custom SweetAlert styling */
+  .swal-wide {
+    width: 600px !important;
+  }
+
+  .swal2-html-container {
+    text-align: left !important;
+  }
+</style>
 
 <?= $this->endSection() ?>

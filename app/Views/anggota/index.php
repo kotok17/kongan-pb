@@ -21,20 +21,20 @@
     </div>
   </div>
   <?php if (session()->getFlashdata('errors')) : ?>
-  <ul style="color:red;">
-    <?php foreach (session('errors') as $error) : ?>
-    <li><?= esc($error) ?></li>
-    <?php endforeach ?>
-  </ul>
+    <ul style="color:red;">
+      <?php foreach (session('errors') as $error) : ?>
+        <li><?= esc($error) ?></li>
+      <?php endforeach ?>
+    </ul>
   <?php endif ?>
 
   <?php if (session()->getFlashdata('success')) : ?>
-  <div>
-    <div class="alert alert-success alert-dismissible fade show col-md-7" role="alert">
-      <strong>Berhasil!</strong> <?= esc(session('success')) ?>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <div>
+      <div class="alert alert-success alert-dismissible fade show col-md-7" role="alert">
+        <strong>Berhasil!</strong> <?= esc(session('success')) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
     </div>
-  </div>
   <?php endif ?>
   <div class="card-body">
     <table id="table_anggota" class="table table-bordered table-hover">
@@ -50,23 +50,23 @@
       <tbody>
         <?php $no = 1; ?>
         <?php foreach ($anggota as $row) : ?>
-        <tr>
-          <td><?= $no++; ?></td>
-          <td><?= esc($row['nama_anggota']); ?></td>
-          <td><?= esc($row['no_hp']); ?></td>
-          <td><?= esc($row['alamat']); ?></td>
-          <td>
-            <a href="#" class="btn btn-info btn-sm">
-              <i class="fa-solid fa-eye"></i> Detail
-            </a>
-            <a href="#" class="btn btn-warning btn-sm">
-              <i class="fa-solid fa-pen-to-square"></i> Edit
-            </a>
-            <a href="#" data-id="<?= $row['id_anggota'] ?>" class="btn btn-danger btn-sm btn-delete">
-              <i class="fa-solid fa-trash"></i> Hapus
-            </a>
-          </td>
-        </tr>
+          <tr>
+            <td><?= $no++; ?></td>
+            <td><?= esc($row['nama_anggota']); ?></td>
+            <td><?= esc($row['no_hp']); ?></td>
+            <td><?= esc($row['alamat']); ?></td>
+            <td>
+              <a href="#" class="btn btn-info btn-sm">
+                <i class="fa-solid fa-eye"></i> Detail
+              </a>
+              <a href="#" class="btn btn-warning btn-sm">
+                <i class="fa-solid fa-pen-to-square"></i> Edit
+              </a>
+              <a href="#" data-id="<?= $row['id_anggota'] ?>" class="btn btn-danger btn-sm btn-delete">
+                <i class="fa-solid fa-trash"></i> Hapus
+              </a>
+            </td>
+          </tr>
         <?php endforeach; ?>
       </tbody>
     </table>
@@ -111,73 +111,73 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-// Tombol Import membuka dialog file
-document.getElementById('btnImport').addEventListener('click', function() {
-  document.getElementById('importFile').click();
-});
-
-// Kirim form otomatis setelah pilih file
-document.getElementById('importFile').addEventListener('change', function() {
-  if (this.files.length > 0) {
-    this.form.submit();
-  }
-});
-
-// DataTables
-$(function() {
-  $('#table_anggota').DataTable({
-    "paging": true,
-    "lengthChange": false,
-    "searching": true,
-    "ordering": true,
-    "info": true,
-    "autoWidth": false,
-    "responsive": true,
+  // Tombol Import membuka dialog file
+  document.getElementById('btnImport').addEventListener('click', function() {
+    document.getElementById('importFile').click();
   });
-});
 
-// SweetAlert delete
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.btn-delete').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      const id = this.dataset.id; // ✅ ambil id dari atribut data-id
+  // Kirim form otomatis setelah pilih file
+  document.getElementById('importFile').addEventListener('change', function() {
+    if (this.files.length > 0) {
+      this.form.submit();
+    }
+  });
 
-      Swal.fire({
-        title: 'Yakin ingin menghapus data ini?',
-        text: "Data tidak bisa dikembalikan setelah dihapus.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya, hapus!',
-        cancelButtonText: 'Batal'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          fetch(`<?= base_url('anggota/delete') ?>/${id}`, { // ✅ perbaikan disini
-              method: 'DELETE',
-              headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-              }
-            })
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                Swal.fire('Terhapus!', data.message, 'success').then(() => {
-                  location.reload();
-                });
-              } else {
-                Swal.fire('Gagal!', data.message, 'error');
-              }
-            })
-            .catch(() => {
-              Swal.fire('Error', 'Terjadi kesalahan saat menghapus.', 'error');
-            });
-        }
+  // DataTables
+  $(function() {
+    $('#table_anggota').DataTable({
+      "paging": true,
+      "lengthChange": false,
+      "searching": true,
+      "ordering": true,
+      "info": true,
+      "autoWidth": false,
+      "responsive": true,
+    });
+  });
+
+  // SweetAlert delete
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const id = this.dataset.id; // ✅ ambil id dari atribut data-id
+
+        Swal.fire({
+          title: 'Yakin ingin menghapus data ini?',
+          text: "Data tidak bisa dikembalikan setelah dihapus.",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Ya, hapus!',
+          cancelButtonText: 'Batal'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            fetch(`<?= base_url('anggota/hapus') ?>/${id}`, { // ✅ perbaikan disini
+                method: 'DELETE',
+                headers: {
+                  'X-Requested-With': 'XMLHttpRequest'
+                }
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  Swal.fire('Terhapus!', data.message, 'success').then(() => {
+                    location.reload();
+                  });
+                } else {
+                  Swal.fire('Gagal!', data.message, 'error');
+                }
+              })
+              .catch(() => {
+                Swal.fire('Error', 'Terjadi kesalahan saat menghapus.', 'error');
+              });
+          }
+        });
       });
     });
   });
-});
 </script>
 
 

@@ -84,7 +84,7 @@ class AnggotaController extends BaseController
     return redirect()->to('/anggota')->with('success', 'Data anggota berhasil disimpan!');
   }
 
-  public function delete($id)
+  public function hapus($id)
   {
     $anggotaModel = new AnggotaModel();
 

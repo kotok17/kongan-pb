@@ -65,6 +65,14 @@
       padding: 0 20px;
     }
 
+    .paguyuban {
+      font-size: 18pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
+    }
+
     .org-name {
       font-size: 18pt;
       font-weight: bold;
@@ -238,7 +246,7 @@
       </div>
       <div class="doc-row">
         <div class="doc-label">Perihal</div>
-        <div class="doc-value">: <strong>Undangan Kongan Sholawat</strong></div>
+        <div class="doc-value">: <strong><?= esc($kegiatan['nama_kegiatan']) ?></strong></div>
       </div>
       <div style="text-align: right; margin-top: 20px;">
         <?= strftime('%A, %d %B %Y', strtotime($tanggal_undangan)) ?>
@@ -254,17 +262,13 @@
     <!-- Konten Surat -->
     <div class="content">
       <div class="greeting">
-        <strong>Innallahi wa innallahi rojiun,</strong><br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Dengan adanya berita duka telah meninggal dunia Saudara/Anggota
-        kita <strong>Alm. <?= esc($kegiatan['nama_anggota']) ?></strong>, kami mengajak rekan-rekan agar dapat hadir
-        kongan sholawat sekaligus mendo'akan beliau pada :
+        <strong>Dengan Hormat,</strong><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Dengan adanya undangan dari Saudara/Anggota
+        kita <strong> <?= esc($kegiatan['nama_anggota']) ?></strong>, kami mengajak rekan-rekan agar dapat hadir kongan
+        pada :
       </div>
 
       <div class="event-details">
-        <div style="font-weight: bold; margin-bottom: 15px; text-align: center; font-size: 14pt;">
-          <?= esc($kegiatan['nama_kegiatan']) ?>:
-        </div>
-
         <div class="detail-row">
           <div class="detail-label">Hari / Tanggal</div>
           <div class="detail-colon">:</div>
@@ -282,13 +286,13 @@
         <div class="detail-row">
           <div class="detail-label">Waktu</div>
           <div class="detail-colon">:</div>
-          <div class="detail-value"><strong>19.00 s/d 20.30 WIB</strong></div>
+          <div class="detail-value"><strong>18.45 s/d 20.30 WIB</strong></div>
         </div>
 
         <div class="detail-row">
           <div class="detail-label">Tempat</div>
           <div class="detail-colon">:</div>
-          <div class="detail-value"><strong><?= esc($tempat_kegiatan) ?></strong></div>
+          <div class="detail-value"><strong>Kantor Sekretariat Pemuda Bitung</strong></div>
         </div>
       </div>
 
