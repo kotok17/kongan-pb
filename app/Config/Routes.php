@@ -22,7 +22,7 @@ $routes->get('test', function () {
 });
 
 // Default route
-$routes->get('/', 'Home::index');
+$routes->get('/', 'AuthController::login');
 
 // Auth routes
 $routes->match(['get', 'post'], 'login', 'AuthController::index');

@@ -1,995 +1,332 @@
 <?= $this->extend('layouts/dashboard_static') ?>
 <?= $this->section('content') ?>
 
-<!-- Header Section dengan Role-based Actions -->
 <div class="card shadow-sm">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div>
-        <h4 class="mb-1 fw-bold text-primary">
-          <i class="fas fa-calendar-check me-2"></i>Detail Kegiatan
-        </h4>
-        <p class="text-muted mb-0">
-          <?php if (session()->get('role') === 'admin'): ?>
-            <span class="badge bg-danger me-2">ADMIN</span>Akses penuh ke semua kegiatan
-          <?php else: ?>
-            <span class="badge bg-success me-2">ANGGOTA</span>
-            <?php if (($kegiatan['id_anggota'] ?? null) == session()->get('id_anggota')): ?>
-              Kegiatan Anda - dapat mengelola
-            <?php else: ?>
-              Kegiatan <?= esc($kegiatan['nama_anggota'] ?? ''); ?> - hanya lihat
-            <?php endif; ?>
-          <?php endif; ?>
-        </p>
-      </div>
-      <div>
-        <a href="<?= base_url('/kegiatan') ?>" class="btn btn-outline-secondary">
-          <i class="fas fa-arrow-left me-1"></i>Kembali
-        </a>
+  <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h4 class="mb-1"><?= esc($kegiatan['nama_kegiatan'] ?? 'Detail Kegiatan') ?></h4>
+      <div class="text-muted small">
+        <i class="fas fa-user me-1"></i><?= esc($kegiatan['nama_anggota'] ?? '-') ?> ·
+        <i
+          class="fas fa-calendar-alt ms-2 me-1"></i><?= date('d M Y', strtotime($kegiatan['tanggal_kegiatan'] ?? date('Y-m-d'))) ?>
       </div>
     </div>
 
-    <!-- Action Buttons - Role-based -->
-    <?php
-    $canManage = false;
-    if (session()->get('role') === 'admin') {
-      $canManage = true; // Admin bisa manage semua kegiatan
-    } elseif (session()->get('role') === 'anggota' && isset($kegiatan['id_anggota']) && $kegiatan['id_anggota'] == session()->get('id_anggota')) {
-      $canManage = true; // Anggota hanya bisa manage kegiatan sendiri - PERBAIKAN DI SINI
-    }
-    ?>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="<?= base_url('kegiatan') ?>" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Kembali
+      </a>
 
-    <?php if ($canManage): ?>
-      <div class="row g-3 mb-4">
-        <div class="col-md-4">
-          <button type="button" class="btn btn-primary w-100 h-100" data-bs-toggle="modal"
-            data-bs-target="#modalKegiatan">
-            <i class="fas fa-plus-circle me-2"></i>Tambah Kongan
-            <small class="d-block opacity-75">Input manual</small>
-          </button>
-        </div>
-
-        <div class="col-md-4">
-          <button type="button" class="btn btn-success w-100 h-100" data-bs-toggle="modal" data-bs-target="#modalImport">
-            <i class="fas fa-file-import me-2"></i>Import Excel
-            <small class="d-block opacity-75">Upload file Excel/CSV</small>
-          </button>
-        </div>
-
-        <div class="col-md-4">
-          <div class="dropdown w-100 h-100">
-            <button class="btn btn-warning w-100 h-100 dropdown-toggle" type="button" id="dropdownExport"
-              data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="fas fa-download me-2"></i>Export Hasil
-              <small class="d-block opacity-75">PDF & Excel</small>
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="dropdownExport">
-              <li>
-                <a class="dropdown-item" href="<?= base_url('/kegiatan/export_pdf/' . ($kegiatan['id_kegiatan'] ?? 0)) ?>"
-                  target="_blank">
-                  <i class="fas fa-file-pdf text-danger me-2"></i>Export PDF
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item"
-                  href="<?= base_url('/kegiatan/export_excel/' . ($kegiatan['id_kegiatan'] ?? 0)) ?>" target="_blank">
-                  <i class="fas fa-file-excel text-success me-2"></i>Export Excel
-                </a>
-              </li>
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li>
-                <a class="dropdown-item" href="#" onclick="printResults()">
-                  <i class="fas fa-print text-primary me-2"></i>Print Langsung
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal Import Excel -->
-      <div class="modal fade" id="modalImport" tabindex="-1" aria-labelledby="modalImportLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-              <h5 class="modal-title" id="modalImportLabel">
-                <i class="fas fa-file-import me-2"></i>Import Data Kongan
-              </h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="<?= base_url('kegiatan/import_kongan') ?>" method="post" enctype="multipart/form-data">
-              <?= csrf_field() ?>
-              <input type="hidden" name="id_kegiatan" value="<?= $kegiatan['id_kegiatan'] ?? 0 ?>">
-
-              <div class="modal-body">
-                <!-- Download Template Section -->
-                <div class="alert alert-info mb-3">
-                  <div class="d-flex align-items-start">
-                    <i class="fas fa-info-circle fa-2x me-3 mt-1"></i>
-                    <div class="flex-grow-1">
-                      <h6 class="alert-heading mb-2 fw-bold">
-                        Petunjuk Import Data Kongan
-                      </h6>
-                      <ol class="mb-3 small">
-                        <li class="mb-1">Download template format import terlebih dahulu</li>
-                        <li class="mb-1">Isi data kongan sesuai format yang ada di template</li>
-                        <li class="mb-1">Pastikan nama anggota sesuai dengan data yang terdaftar</li>
-                        <li class="mb-1">Simpan file dalam format Excel (.xlsx) atau CSV</li>
-                        <li class="mb-1">Upload file yang sudah diisi melalui form di bawah ini</li>
-                      </ol>
-
-                      <!-- Button Download Template - DIPERBESAR -->
-                      <div class="d-grid gap-2">
-                        <a href="<?= base_url('kegiatan/download_template_import') ?>"
-                          class="btn btn-outline-primary btn-lg" target="_blank">
-                          <i class="fas fa-download me-2"></i>
-                          <strong>Download Template Import</strong>
-                          <small class="d-block mt-1">Format Excel (.xlsx)</small>
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- File Upload Section -->
-                <div class="card border-primary">
-                  <div class="card-header bg-primary bg-opacity-10">
-                    <h6 class="mb-0 text-primary">
-                      <i class="fas fa-upload me-2"></i>Upload File Import
-                    </h6>
-                  </div>
-                  <div class="card-body">
-                    <div class="mb-3">
-                      <label for="file" class="form-label fw-bold">
-                        <i class="fas fa-file-excel me-2"></i>Pilih File Excel/CSV
-                        <span class="text-danger">*</span>
-                      </label>
-                      <input type="file" class="form-control form-control-lg" id="file" name="file"
-                        accept=".xlsx,.xls,.csv" required>
-                      <div class="form-text">
-                        <i class="fas fa-exclamation-triangle text-warning me-1"></i>
-                        Format yang didukung: .xlsx, .xls, .csv (Maksimal 2MB)
-                      </div>
-                    </div>
-
-                    <!-- Tips Section -->
-                    <div class="alert alert-warning mb-0">
-                      <div class="d-flex align-items-start">
-                        <i class="fas fa-lightbulb fa-lg me-2 mt-1"></i>
-                        <div>
-                          <strong>Tips Penting:</strong>
-                          <ul class="mb-0 mt-2 small">
-                            <li>Pastikan nama anggota di file Excel sama persis dengan nama di sistem</li>
-                            <li>Jumlah kongan harus berupa angka tanpa format (contoh: 50000 bukan Rp 50.000)</li>
-                            <li>Jangan mengubah atau menghapus baris header di template</li>
-                            <li>Data yang sudah ada akan dilewati (tidak duplikat)</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                  <i class="fas fa-times me-2"></i>Batal
-                </button>
-                <button type="submit" class="btn btn-success btn-lg">
-                  <i class="fas fa-upload me-2"></i>Upload & Import Data
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    <?php else: ?>
-      <div class="alert alert-info d-flex align-items-center" role="alert">
-        <i class="fas fa-info-circle me-2"></i>
-        <div>
-          <strong>Info:</strong> Anda hanya dapat melihat detail kegiatan ini.
-          <?php if (session()->get('role') === 'anggota'): ?>
-            Hanya pemilik kegiatan yang dapat mengelola data kongan.
-          <?php endif; ?>
-        </div>
-      </div>
-    <?php endif; ?>
-  </div>
-</div>
-
-<!-- Flash Messages -->
-<div class="container-fluid px-0">
-  <?php if (session()->getFlashdata('errors')): ?>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-      <i class="fas fa-exclamation-triangle me-2"></i>
-      <strong>Terjadi kesalahan:</strong>
-      <ul class="mb-0 mt-2">
-        <?php foreach (session('errors') as $error): ?>
-          <li><?= esc($error) ?></li>
-        <?php endforeach ?>
-      </ul>
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  <?php endif ?>
-
-  <?php if (session()->getFlashdata('success')): ?>
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      <i class="fas fa-check-circle me-2"></i>
-      <strong>Berhasil!</strong> <?= esc(session('success')) ?>
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  <?php endif ?>
-
-  <?php if (session()->getFlashdata('error')): ?>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-      <i class="fas fa-times-circle me-2"></i>
-      <strong>Error!</strong> <?= esc(session('error')) ?>
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  <?php endif ?>
-
-  <?php if (session()->getFlashdata('import_errors')): ?>
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-      <i class="fas fa-exclamation-triangle me-2"></i>
-      <strong>Detail Error Import:</strong>
-      <ul class="mb-0 mt-2">
-        <?php foreach (session('import_errors') as $error): ?>
-          <li><?= esc($error) ?></li>
-        <?php endforeach ?>
-      </ul>
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  <?php endif ?>
-</div>
-<br>
-<!-- Kegiatan Info Card -->
-<div class="card shadow-sm mb-4">
-  <div class="card-body">
-    <div class="row g-4">
-      <div class="col-md-8">
-        <div class="kegiatan-info">
-          <h5 class="mb-3 fw-bold text-dark">
-            <i class="fas fa-calendar-alt text-primary me-2"></i>
-            <?= esc($kegiatan['nama_kegiatan'] ?? '') ?>
-          </h5>
-          <div class="info-grid">
-            <?php if (isset($kegiatan) && !empty($kegiatan)): ?>
-
-              <strong>Penyelenggara:</strong>
-              <?= esc($kegiatan['nama_anggota'] ?? 'Tidak diketahui') ?>
-              <strong>Tanggal:</strong>
-              <?= isset($kegiatan['tanggal_kegiatan']) ? date('d/m/Y', strtotime($kegiatan['tanggal_kegiatan'])) : 'Tidak diketahui' ?>
-              <strong>Deskripsi:</strong>
-              <?= esc($kegiatan['deskripsi'] ?? 'Tidak ada deskripsi') ?>
-            <?php else: ?>
-              <div class="alert alert-warning">Data kegiatan tidak tersedia</div>
-            <?php endif; ?>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="stats-summary">
-          <div class="stat-item">
-            <div class="stat-number text-primary"><?= count($kongan ?? []) ?></div>
-            <div class="stat-label">Total Peserta</div>
-          </div>
-        </div>
-      </div>
+      <?php if ($canManage): ?>
+      <a href="<?= base_url('kegiatan/export_pdf/' . $kegiatan['id_kegiatan']) ?>"
+        class="btn btn-outline-danger btn-sm">
+        <i class="fas fa-file-pdf me-1"></i>Export PDF
+      </a>
+      <a href="<?= base_url('kegiatan/export_excel/' . $kegiatan['id_kegiatan']) ?>"
+        class="btn btn-outline-success btn-sm">
+        <i class="fas fa-file-excel me-1"></i>Export Excel
+      </a>
+      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalKongan">
+        <i class="fas fa-plus me-1"></i>Tambah Kongan
+      </button>
+      <form action="<?= base_url('kegiatan/import_kongan/' . $kegiatan['id_kegiatan']) ?>" method="post"
+        enctype="multipart/form-data" class="d-inline">
+        <?= csrf_field() ?>
+        <input id="fileImport" type="file" name="import_file" class="d-none" accept=".xls,.xlsx">
+        <button type="button" id="btnImport" class="btn btn-outline-primary btn-sm">
+          <i class="fas fa-upload me-1"></i>Import Excel
+        </button>
+      </form>
+      <?php endif; ?>
     </div>
   </div>
 </div>
 
-<!-- Data Kongan Table -->
-<div class="card shadow-sm">
-  <div class="card-header bg-light">
-    <h6 class="mb-0 fw-bold">
-      <i class="fas fa-coins text-warning me-2"></i>
-      Data Kongan
-      <span class="badge bg-primary ms-2"><?= count($kongan ?? []) ?> peserta</span>
-    </h6>
+<?php if (!$canManage && $isOwner): ?>
+<div class="alert alert-info mt-3">
+  <i class="fas fa-info-circle me-2"></i>
+  Anda hanya dapat melihat detail kegiatan ini. Pengelolaan data kongan dilakukan oleh admin.
+</div>
+<?php endif; ?>
+
+<div class="card shadow-sm mt-4">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+    <h6 class="mb-0 fw-bold"><i class="fas fa-hand-holding-heart me-2"></i>Data Kongan</h6>
+    <span class="badge bg-primary">Total: <?= count($kongan) ?> anggota</span>
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table id="table_kongan" class="table table-hover mb-0">
-        <thead class="bg-light">
+      <table id="table_kongan" class="table table-striped mb-0">
+        <thead class="table-dark">
           <tr>
-            <th class="text-center" width="60">No</th>
             <th>Nama Anggota</th>
-            <th class="text-end" width="150">Jumlah</th>
-            <th class="text-center" width="100">Aksi</th>
+            <th>Tanggal</th>
+            <th class="text-end">Jumlah</th>
+            <th class="text-center">Aksi</th>
           </tr>
         </thead>
         <tbody>
           <?php if (!empty($kongan)): ?>
-            <?php $no = 1; ?>
-            <?php foreach ($kongan as $row): ?>
-              <tr>
-                <td class="text-center"><?= $no++; ?></td>
-                <td>
-                  <div class="d-flex align-items-center">
-                    <div class="user-avatar me-2">
-                      <i class="fas fa-user"></i>
-                    </div>
-                    <span class="fw-medium"><?= esc($row['nama_anggota']) ?></span>
-                  </div>
-                </td>
-                <td class="text-end">
-                  <span class="fw-bold text-success">Rp <?= number_format($row['jumlah'], 0, ',', '.') ?></span>
-                </td>
-                <td class="text-center">
-                  <?php if ($canManage): ?>
-                    <button type="button" class="btn btn-danger btn-sm btn-hapus-kongan"
-                      data-id="<?= $row['id_detail_kegiatan'] ?>" data-nama="<?= esc($row['nama_anggota']) ?>"
-                      data-jumlah="<?= number_format($row['jumlah'], 0, ',', '.') ?>" title="Hapus kongan">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  <?php else: ?>
-                    <span class="text-muted">
-                      <i class="fas fa-eye" title="Hanya lihat"></i>
-                    </span>
-                  <?php endif; ?>
-                </td>
-              </tr>
-            <?php endforeach; ?>
+          <?php foreach ($kongan as $row): ?>
+          <tr>
+            <td><?= esc($row['nama_anggota']) ?></td>
+            <td><?= date('d M Y', strtotime($row['created_at'])) ?></td>
+            <td class="text-end">Rp <?= number_format($row['jumlah'], 0, ',', '.') ?></td>
+            <td class="text-center">
+              <?php if ($canManage): ?>
+              <button class="btn btn-danger btn-sm btn-delete-kongan" data-id="<?= $row['id_detail_kegiatan'] ?>"
+                data-nama="<?= esc($row['nama_anggota']) ?>"
+                data-jumlah="<?= number_format($row['jumlah'], 0, ',', '.') ?>">
+                <i class="fas fa-trash"></i>
+              </button>
+              <?php else: ?>
+              <span class="text-muted">-</span>
+              <?php endif; ?>
+            </td>
+          </tr>
+          <?php endforeach; ?>
           <?php else: ?>
-            <tr id="no-data-row">
-              <td colspan="4" class="text-center text-muted py-5">
-                <div class="empty-state">
-                  <i class="fas fa-coins fa-3x mb-3 opacity-30"></i>
-                  <p class="mb-0 fw-medium">Belum ada data kongan</p>
-                  <small class="text-muted">
-                    <?php if ($canManage): ?>
-                      Klik tombol "Tambah Kongan" untuk menambah data
-                    <?php else: ?>
-                      Data kongan akan muncul di sini
-                    <?php endif; ?>
-                  </small>
-                </div>
-              </td>
-            </tr>
+          <tr>
+            <td colspan="4" class="text-center text-muted py-4">Belum ada data kongan.</td>
+          </tr>
           <?php endif; ?>
         </tbody>
-
-        <!-- Summary Footer -->
-        <?php if (!empty($kongan)): ?>
-          <?php
-          $total_kongan = array_sum(array_column($kongan, 'jumlah'));
-          $sepuluh_persen = $total_kongan * 0.1;
-
-          $mode = $kegiatan['potongan_tidak_ikut_mode'] ?? 'activity_based';
-          $potTidakIkut = (int)($kegiatan['potongan_tidak_ikut_amount'] ?? 20000);
-          $potUndangan  = (int)($kegiatan['potongan_undangan_amount'] ?? 280000);
-
-          $anggota_aktif_di_kegiatan_lain = !empty($aktivitas_anggota);
-          switch ($mode) {
-            case 'none':
-              $potongan_tidak_nulis = 0;
-              break;
-            case 'always':
-              $potongan_tidak_nulis = $potTidakIkut;
-              break;
-            case 'activity_based':
-            default:
-              $potongan_tidak_nulis = $anggota_aktif_di_kegiatan_lain ? 0 : $potTidakIkut;
-              break;
-          }
-
-          $total_bersih = $total_kongan - $sepuluh_persen - $potUndangan - $potongan_tidak_nulis;
-          ?>
-          <tfoot class="bg-light">
-            <tr>
-              <th colspan="3" class="text-end">Total Kongan:</th>
-              <th class="text-end">
-                <span class="fs-6 fw-bold text-primary">Rp <?= number_format($total_kongan, 0, ',', '.') ?></span>
-              </th>
-            </tr>
-            <tr>
-              <th colspan="3" class="text-end">10% Total Kongan:</th>
-              <th class="text-end">
-                <span class="text-danger">- Rp <?= number_format($sepuluh_persen, 0, ',', '.') ?></span>
-              </th>
-            </tr>
-            <?php if ($potongan_tidak_nulis > 0): ?>
-              <tr>
-                <th colspan="3" class="text-end">
-                  <small>
-                    Potongan Tidak Ikut
-                    <?php if ($mode === 'activity_based'): ?>
-                      (berdasar keaktifan)
-                    <?php elseif ($mode === 'always'): ?>
-                      (selalu)
-                      <?php endif; ?>:
-                  </small>
-                </th>
-                <th class="text-end">
-                  <span class="text-danger">- Rp <?= number_format($potongan_tidak_nulis, 0, ',', '.') ?></span>
-                </th>
-              </tr>
-            <?php else: ?>
-              <tr>
-                <th colspan="3" class="text-end"><small>Potongan Tidak Ikut:</small></th>
-                <th class="text-end">
-                  <span class="text-success">+ Rp 0</span>
-                </th>
-              </tr>
-            <?php endif; ?>
-            <tr>
-              <th colspan="3" class="text-end">Potongan Undangan:</th>
-              <th class="text-end">
-                <span class="text-danger">- Rp <?= number_format($potUndangan, 0, ',', '.') ?></span>
-              </th>
-            </tr>
-            <tr class="table-primary">
-              <th colspan="3" class="text-end">
-                <strong class="fs-6">Total Bersih:</strong>
-              </th>
-              <th class="text-end">
-                <strong class="fs-5 text-success">Rp <?= number_format($total_bersih, 0, ',', '.') ?></strong>
-              </th>
-            </tr>
-          </tfoot>
-        <?php endif; ?>
       </table>
     </div>
   </div>
 </div>
 
-<!-- Modal Tambah Kongan - Hanya untuk yang bisa manage -->
-<?php if ($canManage): ?>
-  <div class="modal fade" id="modalKegiatan" tabindex="-1" aria-labelledby="modalKegiatanLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <h1 class="modal-title fs-5" id="modalKegiatanLabel">
-            <i class="fas fa-plus me-2"></i>Tambah Kongan Baru
-          </h1>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<?php if (!empty($kongan)): ?>
+<?php
+  $totalKongan   = array_sum(array_column($kongan, 'jumlah'));
+  $sepuluhPersen = $totalKongan * 0.10;
+  $potTidakIkut  = (int)($kegiatan['potongan_tidak_ikut_amount'] ?? 0);
+  $potUndangan   = (int)($kegiatan['potongan_undangan_amount'] ?? 0);
+  $totalBersih   = $totalKongan - $sepuluhPersen - $potTidakIkut - $potUndangan;
+  ?>
+<div class="card shadow-sm mt-4">
+  <div class="card-header bg-dark text-white fw-bold">
+    <i class="fas fa-calculator me-2"></i>Ringkasan Perhitungan
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div class="p-3 bg-light rounded border">
+          <small class="text-muted d-block">Total Kongan</small>
+          <span class="fw-bold fs-5">Rp <?= number_format($totalKongan, 0, ',', '.') ?></span>
         </div>
-        <form action="<?= base_url('/kegiatan/tambah_kongan') ?>" method="post">
-          <?= csrf_field() ?>
-          <input type="hidden" name="id_kegiatan" value="<?= esc($kegiatan['id_kegiatan'] ?? 0) ?>">
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="id_anggota" class="form-label">
-                <i class="fas fa-user me-1"></i>Nama Anggota <span class="text-danger">*</span>
-              </label>
-              <select name="id_anggota" id="id_anggota" class="form-control" required>
-                <option value="" disabled selected>-Pilih Anggota-</option>
-                <?php foreach ($anggota as $row): ?>
-                  <option value="<?= esc($row['id_anggota']) ?>">
-                    <?= esc($row['nama_anggota']) ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-              <!-- <small class="text-muted">Pilih anggota yang memberikan kongan</small> -->
-            </div>
-            <div class="mb-3">
-              <label for="jumlah" class="form-label">
-                <i class="fas fa-coins me-1"></i>Jumlah Kongan <span class="text-danger">*</span>
-              </label>
-              <div class="input-group">
-                <span class="input-group-text bg-light">Rp</span>
-                <input type="text" class="form-control" id="jumlah" name="jumlah" placeholder="0" required
-                  autocomplete="off">
-              </div>
-              <small class="text-muted">Masukkan angka tanpa titik atau koma. Contoh: 50000</small>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-              <i class="fas fa-times me-1"></i>Batal
-            </button>
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-save me-1"></i>Simpan Kongan
-            </button>
-          </div>
-        </form>
+      </div>
+      <div class="col-md-3">
+        <div class="p-3 bg-light rounded border">
+          <small class="text-muted d-block">10% Operasional</small>
+          <span class="fw-bold fs-5">Rp <?= number_format($sepuluhPersen, 0, ',', '.') ?></span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="p-3 bg-light rounded border">
+          <small class="text-muted d-block">Potongan Tidak Ikut</small>
+          <span class="fw-bold fs-5">Rp <?= number_format($potTidakIkut, 0, ',', '.') ?></span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="p-3 bg-light rounded border">
+          <small class="text-muted d-block">Potongan Undangan</small>
+          <span class="fw-bold fs-5">Rp <?= number_format($potUndangan, 0, ',', '.') ?></span>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="p-3 bg-success text-white rounded border">
+          <small class="text-white-50 d-block">Total Bersih</small>
+          <span class="fw-bold fs-4">Rp <?= number_format($totalBersih, 0, ',', '.') ?></span>
+        </div>
       </div>
     </div>
   </div>
-  <br>
-
-  <!-- Pengaturan Potongan -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-header bg-light">
-      <h6 class="mb-0 fw-bold">
-        <i class="fas fa-sliders-h me-2"></i>Pengaturan Potongan Kegiatan Ini
-      </h6>
-    </div>
-    <div class="card-body">
-      <form action="<?= base_url('kegiatan/update_pengaturan/' . ($kegiatan['id_kegiatan'] ?? 0)) ?>" method="post"
-        class="row g-3" id="formPengaturan">
-        <?= csrf_field() ?>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">
-            Mode Potongan Tidak Ikut <span class="text-danger">*</span>
-          </label>
-          <select name="potongan_tidak_ikut_mode" class="form-select" required>
-            <?php $mode = $kegiatan['potongan_tidak_ikut_mode'] ?? 'activity_based'; ?>
-            <option value="activity_based" <?= $mode === 'activity_based' ? 'selected' : '' ?>>
-              Berdasar keaktifan di kegiatan lain
-            </option>
-            <option value="always" <?= $mode === 'always' ? 'selected' : '' ?>>
-              Selalu terapkan
-            </option>
-            <option value="none" <?= $mode === 'none' ? 'selected' : '' ?>>
-              Tidak diterapkan
-            </option>
-          </select>
-          <small class="text-muted">Aturan penerapan potongan tidak ikut kongan</small>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">
-            Nominal Potongan Tidak Ikut <span class="text-danger">*</span>
-          </label>
-          <div class="input-group">
-            <span class="input-group-text">Rp</span>
-            <input type="text" name="potongan_tidak_ikut_amount" class="form-control"
-              value="<?= number_format((int)($kegiatan['potongan_tidak_ikut_amount'] ?? 20000), 0, ',', '.') ?>" required
-              placeholder="20.000" />
-          </div>
-          <small class="text-muted">Masukkan angka, format otomatis. Contoh: 20000</small>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">
-            Potongan Undangan <span class="text-danger">*</span>
-          </label>
-          <div class="input-group">
-            <span class="input-group-text">Rp</span>
-            <input type="text" name="potongan_undangan_amount" class="form-control"
-              value="<?= number_format((int)($kegiatan['potongan_undangan_amount'] ?? 280000), 0, ',', '.') ?>" required
-              placeholder="280.000" />
-          </div>
-          <small class="text-muted">Masukkan angka, format otomatis. Contoh: 280000</small>
-        </div>
-        <div class="col-12 text-end">
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save me-1"></i>Simpan Pengaturan
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+</div>
 <?php endif; ?>
 
-<style>
-  /* Custom Styling */
-  .kegiatan-info .info-grid {
-    display: grid;
-    gap: 12px;
-  }
+<?php if ($canManage): ?>
+<div class="modal fade" id="modalKongan" tabindex="-1" aria-labelledby="modalKonganLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form action="<?= base_url('kegiatan/tambah_kongan') ?>" method="post" class="modal-content">
+      <?= csrf_field() ?>
+      <input type="hidden" name="id_kegiatan" value="<?= $kegiatan['id_kegiatan'] ?>">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalKonganLabel"><i class="fas fa-plus-circle me-1"></i>Tambah Kongan</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Anggota <span class="text-danger">*</span></label>
+          <select name="id_anggota" class="form-select select2" required>
+            <option value="">- Pilih Anggota -</option>
+            <?php foreach ($anggota as $item): ?>
+            <option value="<?= $item['id_anggota'] ?>"><?= esc($item['nama_anggota']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Jumlah <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text">Rp</span>
+            <input type="text" name="jumlah" id="jumlah" class="form-control" required placeholder="0">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+<?php endif; ?>
 
-  .info-item {
-    display: flex;
-    align-items: center;
-    padding: 8px 0;
-  }
-
-  .stats-summary {
-    text-align: center;
-    padding: 20px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 10px;
-  }
-
-  .stat-number {
-    font-size: 2.5rem;
-    font-weight: bold;
-    margin-bottom: 5px;
-  }
-
-  .stat-label {
-    color: #6c757d;
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-
-  .user-avatar {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #007bff, #6610f2);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 0.8rem;
-  }
-
-  .empty-state {
-    padding: 3rem 1rem;
-  }
-
-  .table th {
-    border-top: none;
-    font-weight: 600;
-    background-color: #f8f9fa !important;
-  }
-
-  .btn-hapus-kongan {
-    transition: all 0.3s ease;
-  }
-
-  .btn-hapus-kongan:hover {
-    transform: scale(1.1);
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
-  }
-
-  @media (max-width: 768px) {
-    .stat-number {
-      font-size: 2rem;
-    }
-
-    .info-grid {
-      gap: 8px;
-    }
-  }
-</style>
-
-<!-- ✅ 1. Tambahkan CSS Select2 -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2-bootstrap4.min.css" rel="stylesheet" />
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-  $(document).ready(function() {
-    // Inisialisasi DataTables hanya jika ada data (bukan empty state)
-    if (!$('#no-data-row').length) {
-      $('#table_kongan').DataTable({
-        "paging": true,
-        "lengthChange": false,
-        "searching": true,
-        "ordering": true,
-        "info": true,
-        "autoWidth": false,
-        "responsive": true,
-        "columnDefs": [{
-            "targets": [0, 3], // No dan Aksi
-            "orderable": false
-          },
-          {
-            "targets": 2, // Kolom Jumlah
-            "type": "num-fmt"
-          }
-        ],
-        "language": {
-          "search": "Cari:",
-          "lengthMenu": "Tampilkan _MENU_ data per halaman",
-          "zeroRecords": "Tidak ada data yang ditemukan",
-          "info": "Menampilkan halaman _PAGE_ dari _PAGES_",
-          "infoEmpty": "Tidak ada data tersedia",
-          "infoFiltered": "(difilter dari _MAX_ total data)",
-          "paginate": {
-            "first": "Pertama",
-            "last": "Terakhir",
-            "next": "Selanjutnya",
-            "previous": "Sebelumnya"
-          }
-        }
-      });
+document.addEventListener('DOMContentLoaded', () => {
+  const table = new DataTable('#table_kongan', {
+    paging: true,
+    searching: true,
+    ordering: true,
+    responsive: true,
+    language: {
+      url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
     }
-
-    <?php if ($canManage): ?>
-      // Format input untuk potongan - TAMBAHAN BARU
-      $('input[name="potongan_tidak_ikut_amount"], input[name="potongan_undangan_amount"]').on('input', function() {
-        let value = this.value.replace(/[^0-9]/g, '');
-        this.value = formatRupiah(value);
-      });
-
-      // Handle submit form pengaturan
-      $('form[action*="update_pengaturan"]').on('submit', function(e) {
-        e.preventDefault();
-
-        // Ambil nilai dan bersihkan format
-        let tidakIkutAmount = $('input[name="potongan_tidak_ikut_amount"]').val().replace(/[^0-9]/g, '');
-        let undanganAmount = $('input[name="potongan_undangan_amount"]').val().replace(/[^0-9]/g, '');
-
-        // Validasi
-        if (!tidakIkutAmount || !undanganAmount) {
-          Swal.fire({
-            title: 'Peringatan!',
-            text: 'Semua field nominal harus diisi!',
-            icon: 'warning',
-            confirmButtonText: 'OK'
-          });
-          return false;
-        }
-
-        // Konfirmasi
-        Swal.fire({
-          title: 'Simpan Pengaturan?',
-          html: `
-            <div class="text-start">
-              <p class="mb-3">Pengaturan potongan yang akan disimpan:</p>
-              <table class="table table-sm">
-                <tr>
-                  <td><strong>Mode Potongan Tidak Ikut:</strong></td>
-                  <td>${$('select[name="potongan_tidak_ikut_mode"] option:selected').text()}</td>
-                </tr>
-                <tr>
-                  <td><strong>Nominal Tidak Ikut:</strong></td>
-                  <td>Rp ${formatRupiah(tidakIkutAmount)}</td>
-                </tr>
-                <tr>
-                  <td><strong>Potongan Undangan:</strong></td>
-                  <td>Rp ${formatRupiah(undanganAmount)}</td>
-                </tr>
-              </table>
-              <div class="alert alert-info small mb-0">
-                <i class="fas fa-info-circle me-1"></i>
-                Pengaturan ini akan mempengaruhi perhitungan total bersih kegiatan ini.
-              </div>
-            </div>
-          `,
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonColor: '#3085d6',
-          cancelButtonColor: '#6c757d',
-          confirmButtonText: '<i class="fas fa-save me-1"></i> Ya, Simpan!',
-          cancelButtonText: '<i class="fas fa-times me-1"></i> Batal',
-          reverseButtons: true
-        }).then((result) => {
-          if (result.isConfirmed) {
-            // Set nilai murni (tanpa format) sebelum submit
-            $('input[name="potongan_tidak_ikut_amount"]').val(tidakIkutAmount);
-            $('input[name="potongan_undangan_amount"]').val(undanganAmount);
-
-            // Show loading
-            Swal.fire({
-              title: 'Menyimpan...',
-              text: 'Mohon tunggu sebentar',
-              allowOutsideClick: false,
-              allowEscapeKey: false,
-              didOpen: () => {
-                Swal.showLoading();
-              }
-            });
-
-            // Submit form
-            this.submit();
-          }
-        });
-      });
-
-      // ✅ 2. Inisialisasi Select2 saat modal dibuka
-      $('#modalKegiatan').on('shown.bs.modal', function() {
-        if ($('#id_anggota').hasClass("select2-hidden-accessible")) {
-          $('#id_anggota').select2('destroy');
-        }
-        $('#id_anggota').select2({
-          theme: 'bootstrap4',
-          dropdownParent: $('#modalKegiatan'),
-          placeholder: '-Pilih Anggota-',
-          minimumInputLength: 1, // Aktifkan pencarian
-          allowClear: true,
-          width: '100%'
-        });
-      });
-
-      // ✅ 3. Hapus Select2 saat modal ditutup
-      $('#modalKegiatan').on('hidden.bs.modal', function() {
-        if ($('#id_anggota').hasClass("select2-hidden-accessible")) {
-          $('#id_anggota').select2('destroy');
-        }
-        $(this).find('form')[0].reset();
-      });
-
-      // Format input jumlah
-      $('#jumlah').on('input', function() {
-        let value = this.value.replace(/[^0-9]/g, '');
-        this.value = formatRupiah(value);
-      });
-
-      // Form validation
-      $('form').on('submit', function(e) {
-        if ($(this).find('input[name="file"]').length > 0) {
-          return true;
-        }
-
-        e.preventDefault();
-        let jumlahInput = $('#jumlah').val().replace(/[^0-9]/g, '');
-        let jumlahAngka = parseInt(jumlahInput);
-
-        if (!jumlahInput || jumlahAngka <= 0) {
-          Swal.fire({
-            title: 'Peringatan!',
-            text: 'Jumlah kongan harus diisi dengan benar!',
-            icon: 'warning',
-            confirmButtonText: 'OK'
-          });
-          return false;
-        }
-
-        if (jumlahAngka > 50000) {
-          Swal.fire({
-            title: 'Jumlah Kongan Besar!',
-            text: `Anda yakin ingin memasukkan kongan sebesar Rp ${formatRupiah(jumlahInput)}?`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Ya, yakin!',
-            cancelButtonText: 'Batal'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              $('#jumlah').val(jumlahInput);
-              $(this)[0].submit();
-            }
-          });
-        } else {
-          $('#jumlah').val(jumlahInput);
-          this.submit();
-        }
-      });
-
-      // Event handler untuk button hapus kongan dengan SweetAlert
-      $(document).on('click', '.btn-hapus-kongan', function(e) {
-        e.preventDefault();
-
-        const id = $(this).data('id');
-        const nama = $(this).data('nama');
-        const jumlah = $(this).data('jumlah');
-
-        // SweetAlert konfirmasi dengan detail
-        Swal.fire({
-          title: 'Konfirmasi Hapus Kongan',
-          html: `
-            <div class="text-start">
-              <p class="mb-2"><strong>Apakah Anda yakin ingin menghapus kongan ini?</strong></p>
-              <div class="alert alert-warning mb-3">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>Peringatan:</strong> Data yang dihapus tidak dapat dikembalikan!
-              </div>
-              <div class="card">
-                <div class="card-body">
-                  <p class="mb-1"><strong>Nama Anggota:</strong> ${nama}</p>
-                  <p class="mb-0"><strong>Jumlah Kongan:</strong> Rp ${jumlah}</p>
-                </div>
-              </div>
-            </div>
-          `,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#dc3545',
-          cancelButtonColor: '#6c757d',
-          confirmButtonText: '<i class="fas fa-trash me-1"></i> Ya, Hapus!',
-          cancelButtonText: '<i class="fas fa-times me-1"></i> Batal',
-          reverseButtons: true,
-          customClass: {
-            popup: 'swal-wide'
-          }
-        }).then((result) => {
-          if (result.isConfirmed) {
-            // Tampilkan loading
-            Swal.fire({
-              title: 'Menghapus...',
-              text: 'Mohon tunggu sebentar',
-              allowOutsideClick: false,
-              allowEscapeKey: false,
-              didOpen: () => {
-                Swal.showLoading();
-              }
-            });
-
-            // Kirim request hapus
-            fetch(`<?= base_url('/kegiatan/hapus_kongan/') ?>${id}`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                  'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: `<?= csrf_token() ?>=<?= csrf_hash() ?>&_method=DELETE`
-              })
-              .then(response => {
-                if (!response.ok) {
-                  throw new Error('Network response was not ok');
-                }
-                return response.json();
-              })
-              .then(data => {
-                if (data.success) {
-                  Swal.fire({
-                    title: 'Berhasil!',
-                    text: data.message || 'Kongan berhasil dihapus',
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                  }).then(() => {
-                    // Reload halaman untuk refresh data
-                    window.location.reload();
-                  });
-                } else {
-                  Swal.fire({
-                    title: 'Gagal!',
-                    text: data.message || 'Terjadi kesalahan saat menghapus kongan',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                  });
-                }
-              })
-              .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                  title: 'Error!',
-                  text: 'Terjadi kesalahan jaringan. Silakan coba lagi.',
-                  icon: 'error',
-                  confirmButtonText: 'OK'
-                });
-              });
-          }
-        });
-      });
-
-      // Import handling
-      $(document).on('click', '#btnImport', function(e) {
-        e.preventDefault();
-        document.getElementById('importFile').click();
-      });
-
-      $(document).on('change', '#importFile', function(e) {
-        if (this.files && this.files.length > 0) {
-          const fileName = this.files[0].name;
-          const fileSize = (this.files[0].size / 1024 / 1024).toFixed(2); // MB
-
-          Swal.fire({
-            title: 'Konfirmasi Import',
-            html: `
-              <div class="text-start">
-                <p><strong>File yang akan diimport:</strong></p>
-                <div class="alert alert-info">
-                  <i class="fas fa-file me-2"></i>${fileName}<br>
-                  <small>Ukuran: ${fileSize} MB</small>
-                </div>
-                <p>Pastikan format file sudah sesuai template.</p>
-              </div>
-            `,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: '<i class="fas fa-upload me-1"></i> Import Sekarang',
-            cancelButtonText: 'Batal'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              Swal.fire({
-                title: 'Mengupload file...',
-                text: 'Mohon tunggu, sedang memproses file import',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                didOpen: () => {
-                  Swal.showLoading();
-                }
-              });
-              this.form.submit();
-            } else {
-              // Reset file input jika dibatalkan
-              this.value = '';
-            }
-          });
-        }
-      });
-    <?php endif; ?>
   });
 
-  function formatRupiah(angka) {
-    let number_string = angka.replace(/[^,\d]/g, '').toString(),
-      split = number_string.split(','),
-      sisa = split[0].length % 3,
-      rupiah = split[0].substr(0, sisa),
-      ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+  <?php if ($canManage): ?>
+  document.getElementById('btnImport')?.addEventListener('click', () => document.getElementById('fileImport')
+    ?.click());
 
-    if (ribuan) {
-      separator = sisa ? '.' : '';
+  const importInput = document.getElementById('fileImport');
+  const importForm = importInput?.closest('form');
+
+  importInput?.addEventListener('change', () => {
+    if (!importInput.files?.length) return;
+
+    const file = importInput.files[0];
+    const size = (file.size / 1024 / 1024).toFixed(2); // MB
+
+    Swal.fire({
+      icon: 'question',
+      title: 'Import data kongan?',
+      html: `
+        <div class="text-start">
+          <p class="mb-2"><strong>File:</strong> ${file.name}</p>
+          <p class="mb-2"><strong>Ukuran:</strong> ${size} MB</p>
+          <small class="text-muted">Pastikan format sesuai template.</small>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonColor: '#28a745',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: '<i class="fas fa-upload me-1"></i>Import',
+      cancelButtonText: 'Batal'
+    }).then(result => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: 'Mengunggah...',
+          text: 'Mohon tunggu sebentar',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          didOpen: () => Swal.showLoading()
+        });
+        importForm?.submit();
+      } else {
+        importInput.value = '';
+      }
+    });
+  });
+
+  document.querySelectorAll('.btn-delete-kongan').forEach(btn => {
+    btn.addEventListener('click', () => {
+      Swal.fire({
+        title: 'Hapus data?',
+        html: `Kongan <strong>${btn.dataset.nama}</strong><br>Rp ${btn.dataset.jumlah}`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, hapus',
+        cancelButtonText: 'Batal',
+        reverseButtons: true
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        fetch(`<?= base_url('kegiatan/hapus_kongan/') ?>${btn.dataset.id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: `<?= csrf_token() ?>=<?= csrf_hash() ?>&amp;_method=DELETE`
+        }).then(r => r.json()).then(data => {
+          if (data.success) location.reload();
+          else Swal.fire('Gagal', data.message ?? 'Terjadi kesalahan', 'error');
+        }).catch(() => Swal.fire('Error', 'Tidak dapat menghapus data.', 'error'));
+      });
+    });
+  });
+
+  const modalForm = document.querySelector('#modalKongan form');
+  const jumlahInput = document.querySelector('#jumlah');
+
+  const formatRupiah = (angka) => {
+    const numberString = angka.replace(/[^,\d]/g, '');
+    const split = numberString.split(',');
+    let sisa = split[0].length % 3;
+    let rupiah = split[0].substr(0, sisa);
+    const ribuan = split[0].substr(sisa).match(/\d{3}/gi) || [];
+    if (ribuan.length) {
+      const separator = sisa ? '.' : '';
       rupiah += separator + ribuan.join('.');
     }
+    return split[1] !== undefined ? `${rupiah},${split[1]}` : rupiah;
+  };
 
-    rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
-    return rupiah;
-  }
+  jumlahInput?.addEventListener('input', () => {
+    const cleaned = jumlahInput.value.replace(/[^0-9]/g, '');
+    jumlahInput.value = cleaned ? formatRupiah(cleaned) : '';
+  });
+
+  modalForm?.addEventListener('submit', (e) => {
+    const rawValue = (jumlahInput.value || '').replace(/[^0-9]/g, '');
+    const nominal = parseInt(rawValue || '0', 10);
+
+    if (nominal < 10000) {
+      e.preventDefault();
+      Swal.fire({
+        icon: 'warning',
+        title: 'Nominal Terlalu Kecil',
+        text: 'Minimal kongan adalah Rp 10.000',
+        confirmButtonText: 'OK'
+      });
+      return;
+    }
+
+    if (nominal > 50000) {
+      e.preventDefault();
+      Swal.fire({
+        icon: 'question',
+        title: 'Nominal Besar',
+        html: `Anda yakin ingin memasukkan kongan sebesar <strong>Rp ${formatRupiah(rawValue)}</strong>?`,
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, simpan',
+        cancelButtonText: 'Batal'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          jumlahInput.value = rawValue;
+          modalForm.submit();
+        }
+      });
+      return;
+    }
+
+    jumlahInput.value = rawValue;
+  });
+  <?php endif; ?>
+});
 </script>
-
-<!-- ✅ 4. Tambahkan JS Select2 -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <?= $this->endSection() ?>

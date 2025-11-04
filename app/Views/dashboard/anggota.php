@@ -40,7 +40,7 @@
           <i class="fas fa-calendar-alt fa-lg text-white"></i>
         </div>
         <h3 class="fw-bold text-primary mb-1 counter" data-target="<?= $total_kegiatan ?? '0' ?>">0</h3>
-        <p class="text-muted mb-0 small fw-medium">Total Kegiatan</p>
+        <p class="text-muted mb-0 small fw-medium">Total Kongan</p>
       </div>
     </div>
   </div>
@@ -52,7 +52,7 @@
           <i class="fas fa-user-check fa-lg text-white"></i>
         </div>
         <h3 class="fw-bold text-success mb-1 counter" data-target="<?= $kegiatan_saya ?? '0' ?>">0</h3>
-        <p class="text-muted mb-0 small fw-medium">Kegiatan Saya</p>
+        <p class="text-muted mb-0 small fw-medium">Kongan Saya</p>
       </div>
     </div>
   </div>
@@ -64,12 +64,12 @@
           <i class="fas fa-coins fa-lg text-white"></i>
         </div>
         <h3 class="fw-bold text-warning mb-1 counter" data-target="<?= $total_kongan_saya ?? '0' ?>">0</h3>
-        <p class="text-muted mb-0 small fw-medium">Kongan Saya</p>
+        <p class="text-muted mb-0 small fw-medium">Total Mengikuti Kongan Lainnya</p>
       </div>
     </div>
   </div>
 
-  <div class="col-xl-3 col-md-6">
+  <!-- <div class="col-xl-3 col-md-6">
     <div class="card border-0 shadow-sm h-100 card-hover stats-card">
       <div class="card-body text-center p-4">
         <div class="stats-icon bg-info mb-3">
@@ -81,7 +81,7 @@
         <p class="text-muted mb-0 small fw-medium">Total Uang Kongan</p>
       </div>
     </div>
-  </div>
+  </div> -->
 </div>
 
 <!-- Kegiatan Timeline untuk Anggota -->
@@ -105,18 +105,18 @@
       </div>
       <div class="card-body pt-3">
         <?php if (!empty($kegiatan_saya_list) && count($kegiatan_saya_list) > 0): ?>
-          <div class="timeline">
-            <?php foreach (array_slice($kegiatan_saya_list, 0, 4) as $index => $kegiatan): ?>
-              <div class="timeline-item <?= $index < 3 ? 'mb-4' : '' ?>">
-                <div
-                  class="timeline-marker <?= strtotime($kegiatan['tanggal_kegiatan']) >= strtotime(date('Y-m-d')) ? 'bg-success' : 'bg-secondary' ?>">
-                </div>
-                <div class="timeline-content">
-                  <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="mb-1 fw-medium"><?= esc($kegiatan['nama_kegiatan']) ?></h6>
-                    <span
-                      class="badge <?= strtotime($kegiatan['tanggal_kegiatan']) >= strtotime(date('Y-m-d')) ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' ?>">
-                      <?php
+        <div class="timeline">
+          <?php foreach (array_slice($kegiatan_saya_list, 0, 4) as $index => $kegiatan): ?>
+          <div class="timeline-item <?= $index < 3 ? 'mb-4' : '' ?>">
+            <div
+              class="timeline-marker <?= strtotime($kegiatan['tanggal_kegiatan']) >= strtotime(date('Y-m-d')) ? 'bg-success' : 'bg-secondary' ?>">
+            </div>
+            <div class="timeline-content">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="mb-1 fw-medium"><?= esc($kegiatan['nama_kegiatan']) ?></h6>
+                <span
+                  class="badge <?= strtotime($kegiatan['tanggal_kegiatan']) >= strtotime(date('Y-m-d')) ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' ?>">
+                  <?php
                       $tanggal_kegiatan = strtotime($kegiatan['tanggal_kegiatan']);
                       $sekarang = time();
                       if ($tanggal_kegiatan >= strtotime(date('Y-m-d'))) {
@@ -127,38 +127,38 @@
                         echo $days . ' hari lalu';
                       }
                       ?>
-                    </span>
-                  </div>
-                  <div class="d-flex align-items-center text-muted small mb-2">
-                    <i class="fas fa-calendar me-2"></i>
-                    <span class="fw-medium"><?= date('d M Y', strtotime($kegiatan['tanggal_kegiatan'])) ?></span>
-                    <span class="mx-2">•</span>
-                    <i class="fas fa-coins me-1"></i>
-                    <span><?= $kegiatan['total_kongan'] ?? '0' ?> kongan</span>
-                  </div>
-                  <a href="<?= base_url('/kegiatan/detail/' . $kegiatan['id_kegiatan']) ?>"
-                    class="btn btn-sm btn-outline-success">
-                    <i class="fas fa-eye me-1"></i>Detail
-                  </a>
-                </div>
+                </span>
               </div>
-            <?php endforeach; ?>
-          </div>
-          <?php if (count($kegiatan_saya_list) > 4): ?>
-            <div class="text-center mt-4">
-              <a href="<?= base_url('/kegiatan') ?>" class="btn btn-sm btn-success px-4">
-                Lihat Semua (<?= count($kegiatan_saya_list) ?>) <i class="fas fa-arrow-right ms-2"></i>
+              <div class="d-flex align-items-center text-muted small mb-2">
+                <i class="fas fa-calendar me-2"></i>
+                <span class="fw-medium"><?= date('d M Y', strtotime($kegiatan['tanggal_kegiatan'])) ?></span>
+                <span class="mx-2">•</span>
+                <i class="fas fa-coins me-1"></i>
+                <span><?= $kegiatan['total_kongan'] ?? '0' ?> kongan</span>
+              </div>
+              <a href="<?= base_url('/kegiatan/detail/' . $kegiatan['id_kegiatan']) ?>"
+                class="btn btn-sm btn-outline-success">
+                <i class="fas fa-eye me-1"></i>Detail
               </a>
             </div>
-          <?php endif; ?>
-        <?php else: ?>
-          <div class="text-center text-muted py-5">
-            <div class="empty-state">
-              <i class="fas fa-user-calendar fa-3x mb-3 opacity-30"></i>
-              <p class="mb-0 fw-medium">Belum ada kegiatan yang Anda kelola</p>
-              <small class="text-muted">Kegiatan yang Anda buat akan muncul di sini</small>
-            </div>
           </div>
+          <?php endforeach; ?>
+        </div>
+        <?php if (count($kegiatan_saya_list) > 4): ?>
+        <div class="text-center mt-4">
+          <a href="<?= base_url('/kegiatan') ?>" class="btn btn-sm btn-success px-4">
+            Lihat Semua (<?= count($kegiatan_saya_list) ?>) <i class="fas fa-arrow-right ms-2"></i>
+          </a>
+        </div>
+        <?php endif; ?>
+        <?php else: ?>
+        <div class="text-center text-muted py-5">
+          <div class="empty-state">
+            <i class="fas fa-user-calendar fa-3x mb-3 opacity-30"></i>
+            <p class="mb-0 fw-medium">Belum ada kegiatan yang Anda kelola</p>
+            <small class="text-muted">Kegiatan yang Anda buat akan muncul di sini</small>
+          </div>
+        </div>
         <?php endif; ?>
       </div>
     </div>
@@ -183,15 +183,15 @@
       </div>
       <div class="card-body pt-3">
         <?php if (!empty($kegiatan_terbaru) && count($kegiatan_terbaru) > 0): ?>
-          <div class="timeline">
-            <?php foreach (array_slice($kegiatan_terbaru, 0, 4) as $index => $kegiatan): ?>
-              <div class="timeline-item <?= $index < 3 ? 'mb-4' : '' ?>">
-                <div class="timeline-marker bg-primary"></div>
-                <div class="timeline-content">
-                  <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="mb-1 fw-medium"><?= esc($kegiatan['nama_kegiatan']) ?></h6>
-                    <span class="badge bg-primary-subtle text-primary">
-                      <?php
+        <div class="timeline">
+          <?php foreach (array_slice($kegiatan_terbaru, 0, 4) as $index => $kegiatan): ?>
+          <div class="timeline-item <?= $index < 3 ? 'mb-4' : '' ?>">
+            <div class="timeline-marker bg-primary"></div>
+            <div class="timeline-content">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="mb-1 fw-medium"><?= esc($kegiatan['nama_kegiatan']) ?></h6>
+                <span class="badge bg-primary-subtle text-primary">
+                  <?php
                       $tanggal_kegiatan = strtotime($kegiatan['tanggal_kegiatan']);
                       $sekarang = time();
                       if ($tanggal_kegiatan >= strtotime(date('Y-m-d'))) {
@@ -202,38 +202,38 @@
                         echo $days . ' hari lalu';
                       }
                       ?>
-                    </span>
-                  </div>
-                  <div class="d-flex align-items-center text-muted small mb-2">
-                    <i class="fas fa-calendar me-2"></i>
-                    <span class="fw-medium"><?= date('d M Y', strtotime($kegiatan['tanggal_kegiatan'])) ?></span>
-                    <span class="mx-2">•</span>
-                    <i class="fas fa-user me-1"></i>
-                    <span><?= esc($kegiatan['nama_anggota']) ?></span>
-                  </div>
-                  <a href="<?= base_url('/kegiatan/detail/' . $kegiatan['id_kegiatan']) ?>"
-                    class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-eye me-1"></i>Detail
-                  </a>
-                </div>
+                </span>
               </div>
-            <?php endforeach; ?>
-          </div>
-          <?php if (count($kegiatan_terbaru) > 4): ?>
-            <div class="text-center mt-4">
-              <a href="<?= base_url('/kegiatan') ?>" class="btn btn-sm btn-primary px-4">
-                Lihat Semua <i class="fas fa-arrow-right ms-2"></i>
+              <div class="d-flex align-items-center text-muted small mb-2">
+                <i class="fas fa-calendar me-2"></i>
+                <span class="fw-medium"><?= date('d M Y', strtotime($kegiatan['tanggal_kegiatan'])) ?></span>
+                <span class="mx-2">•</span>
+                <i class="fas fa-user me-1"></i>
+                <span><?= esc($kegiatan['nama_anggota']) ?></span>
+              </div>
+              <a href="<?= base_url('/kegiatan/detail/' . $kegiatan['id_kegiatan']) ?>"
+                class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-eye me-1"></i>Detail
               </a>
             </div>
-          <?php endif; ?>
-        <?php else: ?>
-          <div class="text-center text-muted py-5">
-            <div class="empty-state">
-              <i class="fas fa-calendar-week fa-3x mb-3 opacity-30"></i>
-              <p class="mb-0 fw-medium">Belum ada kegiatan terbaru</p>
-              <small class="text-muted">Kegiatan akan muncul di sini</small>
-            </div>
           </div>
+          <?php endforeach; ?>
+        </div>
+        <?php if (count($kegiatan_terbaru) > 4): ?>
+        <div class="text-center mt-4">
+          <a href="<?= base_url('/kegiatan') ?>" class="btn btn-sm btn-primary px-4">
+            Lihat Semua <i class="fas fa-arrow-right ms-2"></i>
+          </a>
+        </div>
+        <?php endif; ?>
+        <?php else: ?>
+        <div class="text-center text-muted py-5">
+          <div class="empty-state">
+            <i class="fas fa-calendar-week fa-3x mb-3 opacity-30"></i>
+            <p class="mb-0 fw-medium">Belum ada kegiatan terbaru</p>
+            <small class="text-muted">Kegiatan akan muncul di sini</small>
+          </div>
+        </div>
         <?php endif; ?>
       </div>
     </div>
@@ -313,224 +313,224 @@
 </div>
 
 <style>
-  /* Success Gradient Background */
-  .bg-gradient-success {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+/* Success Gradient Background */
+.bg-gradient-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.bg-gradient-light {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%);
+}
+
+/* Floating Shapes */
+.floating-shapes {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.shape {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  animation: float 6s ease-in-out infinite;
+}
+
+.shape-1 {
+  width: 80px;
+  height: 80px;
+  top: 10%;
+  right: 10%;
+  animation-delay: 0s;
+}
+
+.shape-2 {
+  width: 60px;
+  height: 60px;
+  top: 60%;
+  right: 20%;
+  animation-delay: 2s;
+}
+
+.shape-3 {
+  width: 40px;
+  height: 40px;
+  top: 30%;
+  right: 5%;
+  animation-delay: 4s;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
   }
 
-  .bg-gradient-light {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%);
+  50% {
+    transform: translateY(-20px) rotate(180deg);
   }
+}
 
-  /* Floating Shapes */
+/* Card Hover Effects */
+.card-hover {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Stats Cards */
+.stats-card .stats-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Timeline */
+.timeline {
+  position: relative;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.timeline-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 5.5px;
+  top: 1.5rem;
+  bottom: -1rem;
+  width: 1px;
+  background: linear-gradient(to bottom, #e9ecef, transparent);
+}
+
+.timeline-content {
+  background: rgba(0, 0, 0, 0.02);
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 3px solid var(--bs-success);
+  transition: all 0.3s ease;
+}
+
+.timeline-content:hover {
+  background: rgba(0, 0, 0, 0.04);
+  transform: translateX(2px);
+}
+
+/* Feature Icons */
+.feature-icon,
+.info-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--bs-success) 0%, var(--bs-info) 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.1rem;
+}
+
+/* Member Badge */
+.member-badge {
+  padding: 1.5rem;
+  background: rgba(0, 123, 255, 0.05);
+  border-radius: 15px;
+  border: 2px dashed rgba(0, 123, 255, 0.2);
+}
+
+/* System Info */
+.system-info {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+/* Counter Animation */
+.counter {
+  display: inline-block;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
   .floating-shapes {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
-  .shape {
-    position: absolute;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    animation: float 6s ease-in-out infinite;
-  }
-
-  .shape-1 {
-    width: 80px;
-    height: 80px;
-    top: 10%;
-    right: 10%;
-    animation-delay: 0s;
-  }
-
-  .shape-2 {
-    width: 60px;
-    height: 60px;
-    top: 60%;
-    right: 20%;
-    animation-delay: 2s;
-  }
-
-  .shape-3 {
-    width: 40px;
-    height: 40px;
-    top: 30%;
-    right: 5%;
-    animation-delay: 4s;
-  }
-
-  @keyframes float {
-
-    0%,
-    100% {
-      transform: translateY(0px) rotate(0deg);
-    }
-
-    50% {
-      transform: translateY(-20px) rotate(180deg);
-    }
-  }
-
-  /* Card Hover Effects */
-  .card-hover {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: none;
   }
 
   .card-hover:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-  }
-
-  /* Stats Cards */
-  .stats-card .stats-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-  }
-
-  /* Timeline */
-  .timeline {
-    position: relative;
-  }
-
-  .timeline-item {
-    position: relative;
-    padding-left: 2rem;
-  }
-
-  .timeline-marker {
-    position: absolute;
-    left: 0;
-    top: 0.5rem;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-
-  .timeline-item:not(:last-child)::before {
-    content: '';
-    position: absolute;
-    left: 5.5px;
-    top: 1.5rem;
-    bottom: -1rem;
-    width: 1px;
-    background: linear-gradient(to bottom, #e9ecef, transparent);
-  }
-
-  .timeline-content {
-    background: rgba(0, 0, 0, 0.02);
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 3px solid var(--bs-success);
-    transition: all 0.3s ease;
+    transform: translateY(-4px);
   }
 
   .timeline-content:hover {
-    background: rgba(0, 0, 0, 0.04);
-    transform: translateX(2px);
+    transform: none;
   }
-
-  /* Feature Icons */
-  .feature-icon,
-  .info-icon {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, var(--bs-success) 0%, var(--bs-info) 100%);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.1rem;
-  }
-
-  /* Member Badge */
-  .member-badge {
-    padding: 1.5rem;
-    background: rgba(0, 123, 255, 0.05);
-    border-radius: 15px;
-    border: 2px dashed rgba(0, 123, 255, 0.2);
-  }
-
-  /* System Info */
-  .system-info {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  }
-
-  /* Counter Animation */
-  .counter {
-    display: inline-block;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .floating-shapes {
-      display: none;
-    }
-
-    .card-hover:hover {
-      transform: translateY(-4px);
-    }
-
-    .timeline-content:hover {
-      transform: none;
-    }
-  }
+}
 </style>
 
 <script>
-  // Counter Animation
-  function animateCounters() {
-    const counters = document.querySelectorAll('.counter');
+// Counter Animation
+function animateCounters() {
+  const counters = document.querySelectorAll('.counter');
 
-    counters.forEach(counter => {
-      const target = parseInt(counter.getAttribute('data-target')) || parseInt(counter.textContent);
-      const increment = target / 100;
-      let current = 0;
+  counters.forEach(counter => {
+    const target = parseInt(counter.getAttribute('data-target')) || parseInt(counter.textContent);
+    const increment = target / 100;
+    let current = 0;
 
-      const timer = setInterval(() => {
-        current += increment;
-        if (current >= target) {
-          current = target;
-          clearInterval(timer);
-        }
-        counter.textContent = Math.floor(current).toLocaleString('id-ID');
-      }, 20);
-    });
-  }
-
-  // Initialize when page loads
-  document.addEventListener('DOMContentLoaded', function() {
-    // Animate counters
-    setTimeout(animateCounters, 500);
-
-    // Add loading animation to cards
-    const cards = document.querySelectorAll('.card-hover');
-    cards.forEach((card, index) => {
-      setTimeout(() => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        card.style.transition = 'all 0.6s ease';
-
-        setTimeout(() => {
-          card.style.opacity = '1';
-          card.style.transform = 'translateY(0)';
-        }, 100);
-      }, index * 100);
-    });
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) {
+        current = target;
+        clearInterval(timer);
+      }
+      counter.textContent = Math.floor(current).toLocaleString('id-ID');
+    }, 20);
   });
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Animate counters
+  setTimeout(animateCounters, 500);
+
+  // Add loading animation to cards
+  const cards = document.querySelectorAll('.card-hover');
+  cards.forEach((card, index) => {
+    setTimeout(() => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+      card.style.transition = 'all 0.6s ease';
+
+      setTimeout(() => {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, 100);
+    }, index * 100);
+  });
+});
 </script>
 
 <?= $this->endSection() ?>

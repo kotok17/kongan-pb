@@ -33,4 +33,42 @@ class KegiatanModel extends Model
     // Jika tidak ada ID, return builder untuk chaining
     return $builder;
   }
+
+  public function getDetailWithOwner($id_kegiatan)
+  {
+    return $this->select('kegiatan.*, anggota.nama_anggota, anggota.no_hp')
+      ->join('anggota', 'anggota.id_anggota = kegiatan.id_anggota')
+      ->where('kegiatan.id_kegiatan', $id_kegiatan)
+      ->first();
+  }
+
+  public function hasKegiatanWithinYears(int $idAnggota, string $tanggalBaru, int $years = 3, ?int $excludeId = null): bool
+  {
+    $builder = $this->builder()
+      ->where('id_anggota', $idAnggota);
+
+    if ($excludeId !== null) {
+      $builder->where('id_kegiatan !=', $excludeId);
+    }
+
+    $events = $builder->get()->getResultArray();
+    if (empty($events)) {
+      return false;
+    }
+
+    $target = new \DateTime($tanggalBaru);
+    $minDays = $years * 365;
+
+    foreach ($events as $event) {
+      if (empty($event['tanggal_kegiatan'])) {
+        continue;
+      }
+      $diff = $target->diff(new \DateTime($event['tanggal_kegiatan']));
+      if (($diff->invert === 0 || $diff->invert === 1) && $diff->days < $minDays) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 }
