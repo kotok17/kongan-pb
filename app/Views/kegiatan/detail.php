@@ -29,12 +29,9 @@
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalKongan">
           <i class="fas fa-plus me-2"></i>Tambah Kongan
         </button>
-
-        <!-- Download Template Button -->
         <a href="<?= base_url('kegiatan/download_template_import') ?>" class="btn btn-outline-info btn-sm">
           <i class="fas fa-download me-1"></i>Template Import
         </a>
-
         <form action="<?= base_url('kegiatan/import_kongan') ?>" method="post" enctype="multipart/form-data"
           class="d-inline">
           <?= csrf_field() ?>
@@ -63,42 +60,53 @@
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table id="table_kongan" class="table table-striped mb-0">
-        <thead class="table-dark">
-          <tr>
-            <th>Nama Anggota</th>
-            <th>Tanggal</th>
-            <th class="text-end">Jumlah</th>
-            <th class="text-center">Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php if (!empty($kongan)): ?>
+      <?php if (!empty($kongan)): ?>
+        <table id="table_kongan" class="table table-striped mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>No</th>
+              <th>Nama Anggota</th>
+              <th>Tanggal</th>
+              <th class="text-end">Jumlah</th>
+              <?php if ($canManage): ?>
+                <th class="text-center">Aksi</th>
+              <?php endif; ?>
+            </tr>
+          </thead>
+          <tbody>
+            <?php $no = 1; ?>
             <?php foreach ($kongan as $row): ?>
               <tr>
+                <td><?= $no++ ?></td>
                 <td><?= esc($row['nama_anggota']) ?></td>
                 <td><?= date('d M Y', strtotime($row['created_at'])) ?></td>
                 <td class="text-end">Rp <?= number_format($row['jumlah'], 0, ',', '.') ?></td>
-                <td class="text-center">
-                  <?php if ($canManage): ?>
+                <?php if ($canManage): ?>
+                  <td class="text-center">
                     <button class="btn btn-danger btn-sm btn-delete-kongan" data-id="<?= $row['id_detail_kegiatan'] ?>"
                       data-nama="<?= esc($row['nama_anggota']) ?>"
                       data-jumlah="<?= number_format($row['jumlah'], 0, ',', '.') ?>">
                       <i class="fas fa-trash"></i>
                     </button>
-                  <?php else: ?>
-                    <span class="text-muted">-</span>
-                  <?php endif; ?>
-                </td>
+                  </td>
+                <?php endif; ?>
               </tr>
             <?php endforeach; ?>
-          <?php else: ?>
-            <tr>
-              <td colspan="4" class="text-center text-muted py-4">Belum ada data kongan.</td>
-            </tr>
-          <?php endif; ?>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      <?php else: ?>
+        <div class="text-center text-muted py-5">
+          <i class="fas fa-hand-holding-heart fa-3x mb-3"></i>
+          <h5>Belum Ada Data Kongan</h5>
+          <p class="mb-0">
+            <?php if ($canManage): ?>
+              Klik tombol "Tambah Kongan" untuk menambahkan data kongan
+            <?php else: ?>
+              Belum ada anggota yang memberikan kongan
+            <?php endif; ?>
+          </p>
+        </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -169,20 +177,20 @@
             </label>
             <select name="id_anggota" id="id_anggota" class="form-control" required>
               <option value="" disabled selected>-Pilih Anggota-</option>
-              <?php foreach ($anggota as $item) : ?>
+              <?php foreach ($anggota as $item): ?>
                 <option value="<?= esc($item['id_anggota']); ?>">
                   <?= esc($item['nama_anggota']); ?>
                 </option>
               <?php endforeach; ?>
             </select>
-            <small class="text-muted">Pilih anggota yang membuat kegiatan</small>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Jumlah <span class="text-danger">*</span></label>
             <div class="input-group">
               <span class="input-group-text">Rp</span>
-              <input type="text" name="jumlah" id="jumlah" class="form-control" required placeholder="0">
+              <input type="text" name="jumlah" id="jumlah" class="form-control" required placeholder="10.000">
             </div>
+            <small class="text-muted">Minimal Rp 10.000</small>
           </div>
         </div>
         <div class="modal-footer bg-light">
@@ -195,39 +203,52 @@
 <?php endif; ?>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const table = new DataTable('#table_kongan', {
-      paging: true,
-      searching: true,
-      ordering: true,
-      responsive: true,
-      language: {
-        url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
-      }
-    });
+  $(document).ready(function() {
+    // Inisialisasi DataTables hanya jika ada data
+    <?php if (!empty($kongan)): ?>
+      const table = $('#table_kongan').DataTable({
+        paging: true,
+        searching: true,
+        ordering: true,
+        responsive: true,
+        columnDefs: [{
+            targets: 0,
+            orderable: false
+          }, // No urut tidak bisa disort
+          <?php if ($canManage): ?> {
+              targets: -1,
+              orderable: false
+            } // Kolom aksi tidak bisa disort
+          <?php endif; ?>
+        ],
+        language: {
+          url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
+        }
+      });
+    <?php endif; ?>
 
     <?php if ($canManage): ?>
-      document.getElementById('btnImport')?.addEventListener('click', () => {
-        // Tampilkan informasi template terlebih dahulu
+      // Import handler
+      $('#btnImport').on('click', function() {
         Swal.fire({
           icon: 'info',
           title: 'Import Data Kongan',
           html: `
-        <div class="text-start">
-          <p class="mb-3"><strong>Sebelum import, pastikan:</strong></p>
-          <ol class="text-muted small mb-3">
-            <li>File dalam format Excel (.xlsx) atau CSV</li>
-            <li>Kolom A: Nama Anggota (sesuai data master)</li>
-            <li>Kolom B: Jumlah Kongan (angka saja, tanpa Rp)</li>
-            <li>Baris pertama adalah header</li>
-            <li>Data mulai dari baris kedua</li>
-          </ol>
-          <div class="alert alert-warning small mb-3">
-            <i class="fas fa-exclamation-triangle me-1"></i>
-            <strong>Penting:</strong> Download template terlebih dahulu untuk memastikan format yang benar!
+          <div class="text-start">
+            <p class="mb-3"><strong>Sebelum import, pastikan:</strong></p>
+            <ol class="text-muted small mb-3">
+              <li>File dalam format Excel (.xlsx) atau CSV</li>
+              <li>Kolom A: Nama Anggota (sesuai data master)</li>
+              <li>Kolom B: Jumlah Kongan (angka saja, tanpa Rp)</li>
+              <li>Baris pertama adalah header</li>
+              <li>Data mulai dari baris kedua</li>
+            </ol>
+            <div class="alert alert-warning small mb-3">
+              <i class="fas fa-exclamation-triangle me-1"></i>
+              <strong>Penting:</strong> Download template terlebih dahulu untuk memastikan format yang benar!
+            </div>
           </div>
-        </div>
-      `,
+        `,
           showCancelButton: true,
           showDenyButton: true,
           confirmButtonColor: '#17a2b8',
@@ -239,22 +260,18 @@
           reverseButtons: true
         }).then(result => {
           if (result.isConfirmed) {
-            // Download template
             window.open('<?= base_url('kegiatan/download_template_import') ?>', '_blank');
           } else if (result.isDenied) {
-            // Lanjut ke file picker
-            document.getElementById('fileImport')?.click();
+            $('#fileImport').click();
           }
         });
       });
 
-      const importInput = document.getElementById('fileImport');
-      const importForm = importInput?.closest('form');
+      // File change handler
+      $('#fileImport').on('change', function() {
+        if (!this.files || !this.files.length) return;
 
-      importInput?.addEventListener('change', () => {
-        if (!importInput.files?.length) return;
-
-        const file = importInput.files[0];
+        const file = this.files[0];
         const size = (file.size / 1024 / 1024).toFixed(2);
         const allowedExts = ['xlsx', 'xls', 'csv'];
         const fileExt = file.name.split('.').pop().toLowerCase();
@@ -266,7 +283,7 @@
             text: 'Hanya file Excel (.xlsx, .xls) dan CSV (.csv) yang diizinkan',
             confirmButtonText: 'OK'
           });
-          importInput.value = '';
+          $(this).val('');
           return;
         }
 
@@ -274,16 +291,16 @@
           icon: 'question',
           title: 'Konfirmasi Import',
           html: `
-        <div class="text-start">
-          <p class="mb-2"><strong>File:</strong> ${file.name}</p>
-          <p class="mb-2"><strong>Ukuran:</strong> ${size} MB</p>
-          <p class="mb-3"><strong>Format:</strong> ${fileExt.toUpperCase()}</p>
-          <div class="alert alert-info small mb-0">
-            <i class="fas fa-info-circle me-1"></i>
-            Data yang sudah ada akan dilewati. Hanya data baru yang akan ditambahkan.
+          <div class="text-start">
+            <p class="mb-2"><strong>File:</strong> ${file.name}</p>
+            <p class="mb-2"><strong>Ukuran:</strong> ${size} MB</p>
+            <p class="mb-3"><strong>Format:</strong> ${fileExt.toUpperCase()}</p>
+            <div class="alert alert-info small mb-0">
+              <i class="fas fa-info-circle me-1"></i>
+              Data yang sudah ada akan dilewati. Hanya data baru yang akan ditambahkan.
+            </div>
           </div>
-        </div>
-      `,
+        `,
           showCancelButton: true,
           confirmButtonColor: '#28a745',
           cancelButtonColor: '#6c757d',
@@ -298,13 +315,14 @@
               allowEscapeKey: false,
               didOpen: () => Swal.showLoading()
             });
-            importForm?.submit();
+            $(this).closest('form').submit();
           } else {
-            importInput.value = '';
+            $(this).val('');
           }
         });
       });
 
+      // Modal Select2 setup
       $('#modalKongan').on('shown.bs.modal', function() {
         if ($('#id_anggota').hasClass("select2-hidden-accessible")) {
           $('#id_anggota').select2('destroy');
@@ -313,45 +331,62 @@
           theme: 'bootstrap4',
           dropdownParent: $('#modalKongan'),
           placeholder: '-Pilih Anggota-',
-          minimumInputLength: 1, // Aktifkan pencarian minimal 1 karakter
           allowClear: true,
           width: '100%'
         });
       });
 
-      document.querySelectorAll('.btn-delete-kongan').forEach(btn => {
-        btn.addEventListener('click', () => {
-          Swal.fire({
-            title: 'Hapus data?',
-            html: `Kongan <strong>${btn.dataset.nama}</strong><br>Rp ${btn.dataset.jumlah}`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, hapus',
-            cancelButtonText: 'Batal',
-            reverseButtons: true
-          }).then(result => {
-            if (!result.isConfirmed) return;
-            fetch(`<?= base_url('kegiatan/hapus_kongan/') ?>${btn.dataset.id}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-Requested-With': 'XMLHttpRequest'
-              },
-              body: `<?= csrf_token() ?>=<?= csrf_hash() ?>&amp;_method=DELETE`
-            }).then(r => r.json()).then(data => {
-              if (data.success) location.reload();
-              else Swal.fire('Gagal', data.message ?? 'Terjadi kesalahan', 'error');
-            }).catch(() => Swal.fire('Error', 'Tidak dapat menghapus data.', 'error'));
+      // Reset modal saat ditutup
+      $('#modalKongan').on('hidden.bs.modal', function() {
+        if ($('#id_anggota').hasClass("select2-hidden-accessible")) {
+          $('#id_anggota').select2('destroy');
+        }
+        $(this).find('form')[0].reset();
+      });
+
+      // Delete kongan handler
+      $(document).on('click', '.btn-delete-kongan', function() {
+        const id = $(this).data('id');
+        const nama = $(this).data('nama');
+        const jumlah = $(this).data('jumlah');
+
+        Swal.fire({
+          title: 'Hapus data?',
+          html: `Kongan <strong>${nama}</strong><br>Rp ${jumlah}`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: 'Ya, hapus',
+          cancelButtonText: 'Batal',
+          reverseButtons: true
+        }).then(result => {
+          if (!result.isConfirmed) return;
+
+          $.ajax({
+            url: `<?= base_url('kegiatan/hapus_kongan/') ?>${id}`,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            data: `<?= csrf_token() ?>=<?= csrf_hash() ?>&_method=DELETE`,
+            success: function(data) {
+              if (data.success) {
+                location.reload();
+              } else {
+                Swal.fire('Gagal', data.message || 'Terjadi kesalahan', 'error');
+              }
+            },
+            error: function() {
+              Swal.fire('Error', 'Tidak dapat menghapus data.', 'error');
+            }
           });
         });
       });
 
-      const modalForm = document.querySelector('#modalKongan form');
-      const jumlahInput = document.querySelector('#jumlah');
-
-      const formatRupiah = (angka) => {
+      // Format rupiah function
+      function formatRupiah(angka) {
         const numberString = angka.replace(/[^,\d]/g, '');
         const split = numberString.split(',');
         let sisa = split[0].length % 3;
@@ -362,30 +397,35 @@
           rupiah += separator + ribuan.join('.');
         }
         return split[1] !== undefined ? `${rupiah},${split[1]}` : rupiah;
-      };
+      }
 
-      jumlahInput?.addEventListener('input', () => {
-        const cleaned = jumlahInput.value.replace(/[^0-9]/g, '');
-        jumlahInput.value = cleaned ? formatRupiah(cleaned) : '';
+      // Input formatting
+      $('#jumlah').on('input', function() {
+        const cleaned = $(this).val().replace(/[^0-9]/g, '');
+        $(this).val(cleaned ? formatRupiah(cleaned) : '');
       });
 
-      modalForm?.addEventListener('submit', (e) => {
-        const rawValue = (jumlahInput.value || '').replace(/[^0-9]/g, '');
+      // Form validation
+      $('#modalKongan form').on('submit', function(e) {
+        e.preventDefault();
+
+        const rawValue = $('#jumlah').val().replace(/[^0-9]/g, '');
         const nominal = parseInt(rawValue || '0', 10);
 
+        // VALIDASI MINIMAL 10.000
         if (nominal < 10000) {
-          e.preventDefault();
           Swal.fire({
             icon: 'warning',
             title: 'Nominal Terlalu Kecil',
             text: 'Minimal kongan adalah Rp 10.000',
             confirmButtonText: 'OK'
           });
-          return;
+          return false;
         }
 
+        // KONFIRMASI JIKA DIATAS 50.000
         if (nominal > 50000) {
-          e.preventDefault();
+          const self = this;
           Swal.fire({
             icon: 'question',
             title: 'Nominal Besar',
@@ -397,14 +437,16 @@
             cancelButtonText: 'Batal'
           }).then((result) => {
             if (result.isConfirmed) {
-              jumlahInput.value = rawValue;
-              modalForm.submit();
+              $('#jumlah').val(rawValue);
+              self.submit();
             }
           });
-          return;
+          return false;
         }
 
-        jumlahInput.value = rawValue;
+        // Jika nominal antara 10.000 - 50.000, langsung submit
+        $('#jumlah').val(rawValue);
+        this.submit();
       });
     <?php endif; ?>
   });

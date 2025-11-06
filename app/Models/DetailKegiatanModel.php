@@ -21,7 +21,7 @@ class DetailKegiatanModel extends Model
     return $this->select('kegiatan_detail.*, anggota.nama_anggota')
       ->join('anggota', 'anggota.id_anggota = kegiatan_detail.id_anggota')
       ->where('kegiatan_detail.id_kegiatan', $id_kegiatan)
-      ->orderBy('kegiatan_detail.created_at', 'DESC')
+      ->orderBy('anggota.nama_anggota', 'ASC')
       ->findAll();
   }
 
