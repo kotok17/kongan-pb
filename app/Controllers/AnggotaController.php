@@ -49,7 +49,7 @@ class AnggotaController extends BaseController
     return redirect()->to('/anggota')->with('success', 'Data anggota berhasil diimport!');
   }
 
-  public function tambah()
+  public function simpan()
   {
     $anggotaModel = new AnggotaModel();
 
@@ -86,18 +86,170 @@ class AnggotaController extends BaseController
 
   public function hapus($id)
   {
-    $anggotaModel = new AnggotaModel();
-
-    if ($anggotaModel->delete($id)) {
-      return $this->response->setJSON([
-        'success' => true,
-        'message' => 'Data berhasil dihapus'
-      ]);
-    } else {
+    // Validasi CSRF untuk request AJAX
+    if (!$this->request->isAJAX()) {
       return $this->response->setJSON([
         'success' => false,
-        'message' => 'Gagal menghapus data'
+        'message' => 'Request tidak valid'
       ]);
     }
+
+    // Validasi admin access
+    if (session()->get('role') !== 'admin') {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Akses ditolak. Hanya admin yang dapat menghapus data anggota.'
+      ]);
+    }
+
+    $anggotaModel = new AnggotaModel();
+
+    // Cek apakah anggota ada
+    $anggota = $anggotaModel->find($id);
+    if (!$anggota) {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Data anggota tidak ditemukan'
+      ]);
+    }
+
+    $db = \Config\Database::connect();
+
+    // ✅ CEK APAKAH ANGGOTA PERNAH MEMBUAT KEGIATAN
+    $hasKegiatan = $db->table('kegiatan')
+      ->where('id_anggota', $id)
+      ->countAllResults();
+
+    if ($hasKegiatan > 0) {
+      // Ambil nama kegiatan untuk info
+      $kegiatanList = $db->table('kegiatan')
+        ->select('nama_kegiatan, tanggal_kegiatan')
+        ->where('id_anggota', $id)
+        ->orderBy('tanggal_kegiatan', 'DESC')
+        ->get()
+        ->getResultArray();
+
+      $namaKegiatan = array_map(function ($k) {
+        return $k['nama_kegiatan'] . ' (' . date('d/m/Y', strtotime($k['tanggal_kegiatan'])) . ')';
+      }, $kegiatanList);
+
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Tidak dapat menghapus anggota ini karena pernah membuat kegiatan kongan.',
+        'detail' => 'Kegiatan yang dibuat: ' . implode(', ', array_slice($namaKegiatan, 0, 3)) .
+          (count($namaKegiatan) > 3 ? ' dan ' . (count($namaKegiatan) - 3) . ' kegiatan lainnya' : '')
+      ]);
+    }
+
+    // ✅ CEK APAKAH ANGGOTA PERNAH IKUT KONGAN DI KEGIATAN LAIN
+    $hasKongan = $db->table('kegiatan_detail kd')
+      ->select('k.nama_kegiatan, k.tanggal_kegiatan, kd.jumlah')
+      ->join('kegiatan k', 'k.id_kegiatan = kd.id_kegiatan')
+      ->where('kd.id_anggota', $id)
+      ->countAllResults();
+
+    if ($hasKongan > 0) {
+      // Ambil info kongan untuk detail
+      $konganList = $db->table('kegiatan_detail kd')
+        ->select('k.nama_kegiatan, k.tanggal_kegiatan, kd.jumlah')
+        ->join('kegiatan k', 'k.id_kegiatan = kd.id_kegiatan')
+        ->where('kd.id_anggota', $id)
+        ->orderBy('k.tanggal_kegiatan', 'DESC')
+        ->limit(3)
+        ->get()
+        ->getResultArray();
+
+      $infoKongan = array_map(function ($k) {
+        return $k['nama_kegiatan'] . ' (Rp ' . number_format($k['jumlah'], 0, ',', '.') . ')';
+      }, $konganList);
+
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Tidak dapat menghapus anggota ini karena pernah memberikan kongan di kegiatan lain.',
+        'detail' => 'Kongan di: ' . implode(', ', $infoKongan) .
+          ($hasKongan > 3 ? ' dan ' . ($hasKongan - 3) . ' kegiatan lainnya' : '')
+      ]);
+    }
+
+    // ✅ CEK APAKAH ANGGOTA MEMILIKI AKUN USER
+    $hasUser = $db->table('users')
+      ->where('id_anggota', $id)
+      ->countAllResults();
+
+    if ($hasUser > 0) {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Tidak dapat menghapus anggota ini karena masih memiliki akun user aktif.',
+        'detail' => 'Hapus akun user terlebih dahulu sebelum menghapus data anggota.'
+      ]);
+    }
+
+    // ✅ JIKA TIDAK ADA RELASI, LANJUTKAN HAPUS
+    try {
+      if ($anggotaModel->delete($id)) {
+        return $this->response->setJSON([
+          'success' => true,
+          'message' => 'Data anggota berhasil dihapus'
+        ]);
+      } else {
+        return $this->response->setJSON([
+          'success' => false,
+          'message' => 'Gagal menghapus data anggota'
+        ]);
+      }
+    } catch (\Exception $e) {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Error: ' . $e->getMessage()
+      ]);
+    }
+  }
+
+  public function detail($id)
+  {
+    if (!$this->request->isAJAX()) {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Request tidak valid'
+      ]);
+    }
+
+    $anggotaModel = new AnggotaModel();
+    $anggota = $anggotaModel->find($id);
+
+    if (!$anggota) {
+      return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Data anggota tidak ditemukan'
+      ]);
+    }
+
+    // Ambil history kongan anggota
+    $db = \Config\Database::connect();
+    $historyKongan = $db->table('kegiatan_detail kd')
+      ->select('k.nama_kegiatan, k.tanggal_kegiatan, kd.jumlah, kd.created_at, a_pemilik.nama_anggota as pemilik_kegiatan')
+      ->join('kegiatan k', 'k.id_kegiatan = kd.id_kegiatan')
+      ->join('anggota a_pemilik', 'a_pemilik.id_anggota = k.id_anggota')
+      ->where('kd.id_anggota', $id)
+      ->orderBy('k.tanggal_kegiatan', 'DESC')
+      ->get()
+      ->getResultArray();
+
+    // Hitung statistik
+    $totalKongan = array_sum(array_column($historyKongan, 'jumlah'));
+    $jumlahKegiatan = count($historyKongan);
+
+    return $this->response->setJSON([
+      'success' => true,
+      'data' => [
+        'anggota' => $anggota,
+        'history_kongan' => $historyKongan,
+        'statistik' => [
+          'total_kongan' => $totalKongan,
+          'jumlah_kegiatan' => $jumlahKegiatan,
+          'rata_rata' => $jumlahKegiatan > 0 ? $totalKongan / $jumlahKegiatan : 0
+        ]
+      ]
+    ]);
   }
 }

@@ -67,7 +67,10 @@ $routes->group('anggota', ['filter' => 'auth'], function ($routes) {
   $routes->get('edit/(:num)', 'AnggotaController::edit/$1');
   $routes->post('update/(:num)', 'AnggotaController::update/$1');
   $routes->delete('hapus/(:num)', 'AnggotaController::hapus/$1');
+  $routes->post('/anggota/hapus/(:num)', 'AnggotaController::hapus/$1');
+  $routes->delete('/anggota/hapus/(:num)', 'AnggotaController::hapus/$1');
 });
+$routes->get('/anggota/detail/(:num)', 'AnggotaController::detail/$1');
 
 // Undangan routes
 $routes->group('undangan', ['filter' => 'auth'], function ($routes) {
