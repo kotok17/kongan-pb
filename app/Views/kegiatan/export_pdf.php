@@ -180,10 +180,6 @@
       <span class="info-label">Total Peserta:</span>
       <span class="info-value"><?= count($kongan) ?> orang</span>
     </div>
-    <div class="info-row">
-      <span class="info-label">Tanggal Cetak:</span>
-      <span class="info-value"><?= date('d F Y H:i') ?> WIB</span>
-    </div>
   </div>
 
   <table>
@@ -226,16 +222,14 @@
       <span class="summary-value summary-negative">- Rp <?= number_format($sepuluh_persen, 0, ',', '.') ?></span>
     </div>
 
-    <?php if (!$anggota_aktif_di_kegiatan_lain): ?>
     <div class="summary-row">
-      <span class="summary-label">Potongan Tidak Nulis Kegiatan Lain (0x ikut):</span>
-      <span class="summary-value summary-negative">- Rp <?= number_format($potonganTidakIkut, 0, ',', '.') ?></span>
+      <span class="summary-label">
+        Potongan Tidak Ikut Kongan:
+        <small>(<?= $jumlah_tidak_ikut ?> kegiatan x Rp
+          <?= number_format($potongan_tidak_ikut_amount, 0, ',', '.') ?>)</small>
+      </span>
+      <span class="summary-value summary-negative">- Rp <?= number_format($potongan_tidak_ikut, 0, ',', '.') ?></span>
     </div>
-    <?php else: ?>
-    <div class="summary-row">
-      <span class="summary-label">Anggota sangat aktif:</span>
-    </div>
-    <?php endif; ?>
 
     <div class="summary-row">
       <span class="summary-label">Potongan Undangan:</span>
@@ -249,7 +243,7 @@
     </div>
   </div>
   <?php endif; ?>
-
+  <!-- 
   <div class="signature-section">
     <div class="signature-box">
       <p><strong>Mengetahui,</strong></p>
@@ -257,7 +251,7 @@
       <div class="signature-line"></div>
       <p>(Ridwan Iskandar, S.M)</p>
     </div>
-  </div>
+  </div> -->
 
   <div class="footer">
     <p>Dokumen ini dibuat secara otomatis oleh Sistem Kongan PB</p>

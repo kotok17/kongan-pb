@@ -39,9 +39,6 @@ class KegiatanController extends BaseController
     $isAdmin = ($role === 'admin');
     $idAnggota = session()->get('id_anggota');
 
-    // Debug session data (hapus setelah testing)
-    // log_message('debug', 'User role: ' . $role . ', ID Anggota: ' . $idAnggota);
-
     if ($isAdmin) {
       // Admin bisa lihat semua kegiatan
       $kegiatan = $this->kegiatanModel
@@ -490,7 +487,7 @@ class KegiatanController extends BaseController
       return redirect()->to('/kegiatan')->with('error', 'Data kegiatan tidak lengkap - ID Anggota tidak ada');
     }
 
-    // Ambil data kongan - DIURUTKAN BERDASARKAN NAMA ANGGOTA
+    // Ambil data kongan
     $kongan = $db->table('kegiatan_detail')
       ->select('kegiatan_detail.*, anggota.nama_anggota')
       ->join('anggota', 'anggota.id_anggota = kegiatan_detail.id_anggota')
@@ -506,30 +503,21 @@ class KegiatanController extends BaseController
     $potTidakIkut = (int)($kegiatan['potongan_tidak_ikut_amount'] ?? 0);
     $potUndangan  = (int)($kegiatan['potongan_undangan_amount'] ?? 0);
 
-    $aktivitas_anggota = $db->table('kegiatan_detail AS kd')
-      ->select('k.nama_kegiatan, k.tanggal_kegiatan, kd.jumlah')
-      ->join('kegiatan AS k', 'k.id_kegiatan = kd.id_kegiatan')
-      ->where('kd.id_anggota', $kegiatan['id_anggota'])
-      ->where('k.id_kegiatan !=', $id_kegiatan)
-      ->get()
-      ->getResultArray();
+    // ✅ PERBAIKAN LOGIKA POTONGAN TIDAK IKUT
+    // Hitung total kegiatan (semua user)
+    $totalKegiatan = $db->table('kegiatan')->countAllResults();
+    // Hitung kegiatan yang diikuti oleh pemilik kegiatan ini
+    $kegiatanDiikuti = $db->table('kegiatan_detail')
+        ->where('id_anggota', $kegiatan['id_anggota'])
+        ->distinct()
+        ->select('id_kegiatan')
+        ->countAllResults();
+    // Hitung jumlah tidak ikut
+    $jumlahTidakIkut = $totalKegiatan - $kegiatanDiikuti;
+    // Total potongan tidak ikut
+    $totalPotTidakIkut = $jumlahTidakIkut * $potTidakIkut;
 
-    $aktifDiKegiatanLain = !empty($aktivitas_anggota);
-
-    switch ($potMode) {
-      case 'none':
-        $potonganTidakIkut = 0;
-        break;
-      case 'always':
-        $potonganTidakIkut = $potTidakIkut;
-        break;
-      case 'activity_based':
-      default:
-        $potonganTidakIkut = $aktifDiKegiatanLain ? 0 : $potTidakIkut;
-        break;
-    }
-
-    $total_bersih = $total_kongan - $sepuluh_persen - $potUndangan - $potonganTidakIkut;
+    $total_bersih = $total_kongan - $sepuluh_persen - $totalPotTidakIkut - $potUndangan;
 
     $html = view('kegiatan/export_pdf', [
       'kegiatan' => $kegiatan,
@@ -537,11 +525,10 @@ class KegiatanController extends BaseController
       'total_kongan'             => $total_kongan,
       'sepuluh_persen'           => $sepuluh_persen,
       'potongan_undangan'        => $potUndangan,
-      'potongan_tidak_nulis'     => $potonganTidakIkut,
-      'potongan_mode'            => $potMode,
+      'potongan_tidak_ikut'      => $totalPotTidakIkut,
+      'jumlah_tidak_ikut'        => $jumlahTidakIkut,
+      'potongan_tidak_ikut_amount' => $potTidakIkut,
       'total_bersih'             => $total_bersih,
-      'anggota_aktif_di_kegiatan_lain' => $aktifDiKegiatanLain,
-      'aktivitas_anggota'        => $aktivitas_anggota,
     ]);
 
     $options = new Options();
@@ -566,41 +553,31 @@ class KegiatanController extends BaseController
   {
     // Validasi akses
     if (!$this->validate_access($id_kegiatan)) {
-      return redirect()->to('/kegiatan')->with('error', 'Akses ditolak');
+        return redirect()->to('/kegiatan')->with('error', 'Akses ditolak');
     }
 
-    // Gunakan query builder langsung seperti di method detail()
     $db = \Config\Database::connect();
 
-    // Ambil data kegiatan dengan cara yang sama seperti method detail()
+    // Ambil data kegiatan
     $kegiatan = $db->table('kegiatan')
-      ->select('kegiatan.*, anggota.nama_anggota, anggota.alamat, anggota.no_hp')
-      ->join('anggota', 'anggota.id_anggota = kegiatan.id_anggota')
-      ->where('kegiatan.id_kegiatan', $id_kegiatan)
-      ->get()
-      ->getRowArray();
+        ->select('kegiatan.*, anggota.nama_anggota, anggota.alamat, anggota.no_hp')
+        ->join('anggota', 'anggota.id_anggota = kegiatan.id_anggota')
+        ->where('kegiatan.id_kegiatan', $id_kegiatan)
+        ->get()
+        ->getRowArray();
 
     if (!$kegiatan) {
-      return redirect()->to('/kegiatan')->with('error', 'Kegiatan tidak ditemukan');
+        return redirect()->to('/kegiatan')->with('error', 'Kegiatan tidak ditemukan');
     }
 
-    // Debug: Log data kegiatan
-    log_message('debug', 'Data kegiatan untuk export: ' . json_encode($kegiatan));
-
-    // Pastikan id_anggota ada
-    if (!isset($kegiatan['id_anggota']) || empty($kegiatan['id_anggota'])) {
-      log_message('error', 'ID Anggota tidak ditemukan dalam data kegiatan');
-      return redirect()->to('/kegiatan')->with('error', 'Data kegiatan tidak lengkap - ID Anggota tidak ada');
-    }
-
-    // Ambil data kongan - DIURUTKAN BERDASARKAN NAMA ANGGOTA
+    // Ambil data kongan
     $kongan = $db->table('kegiatan_detail')
-      ->select('kegiatan_detail.*, anggota.nama_anggota')
-      ->join('anggota', 'anggota.id_anggota = kegiatan_detail.id_anggota')
-      ->where('kegiatan_detail.id_kegiatan', $id_kegiatan)
-      ->orderBy('anggota.nama_anggota', 'ASC')
-      ->get()
-      ->getResultArray();
+        ->select('kegiatan_detail.*, anggota.nama_anggota')
+        ->join('anggota', 'anggota.id_anggota = kegiatan_detail.id_anggota')
+        ->where('kegiatan_detail.id_kegiatan', $id_kegiatan)
+        ->orderBy('anggota.nama_anggota', 'ASC')
+        ->get()
+        ->getResultArray();
 
     $total_kongan   = array_sum(array_column($kongan, 'jumlah') ?? []);
     $sepuluh_persen = $total_kongan * 0.1;
@@ -609,30 +586,21 @@ class KegiatanController extends BaseController
     $potTidakIkut = (int)($kegiatan['potongan_tidak_ikut_amount'] ?? 0);
     $potUndangan  = (int)($kegiatan['potongan_undangan_amount'] ?? 0);
 
-    $aktivitas_anggota = $db->table('kegiatan_detail AS kd')
-      ->select('k.nama_kegiatan, k.tanggal_kegiatan, kd.jumlah')
-      ->join('kegiatan AS k', 'k.id_kegiatan = kd.id_kegiatan')
-      ->where('kd.id_anggota', $kegiatan['id_anggota'])
-      ->where('k.id_kegiatan !=', $id_kegiatan)
-      ->get()
-      ->getResultArray();
+    // ✅ PERBAIKAN LOGIKA POTONGAN TIDAK IKUT
+    // Hitung total kegiatan (semua user)
+    $totalKegiatan = $db->table('kegiatan')->countAllResults();
+    // Hitung kegiatan yang diikuti oleh pemilik kegiatan ini
+    $kegiatanDiikuti = $db->table('kegiatan_detail')
+        ->where('id_anggota', $kegiatan['id_anggota'])
+        ->distinct()
+        ->select('id_kegiatan')
+        ->countAllResults();
+    // Hitung jumlah tidak ikut
+    $jumlahTidakIkut = $totalKegiatan - $kegiatanDiikuti;
+    // Total potongan tidak ikut
+    $totalPotTidakIkut = $jumlahTidakIkut * $potTidakIkut;
 
-    $aktifDiKegiatanLain = !empty($aktivitas_anggota);
-
-    switch ($potMode) {
-      case 'none':
-        $potonganTidakIkut = 0;
-        break;
-      case 'always':
-        $potonganTidakIkut = $potTidakIkut;
-        break;
-      case 'activity_based':
-      default:
-        $potonganTidakIkut = $aktifDiKegiatanLain ? 0 : $potTidakIkut;
-        break;
-    }
-
-    $total_bersih = $total_kongan - $sepuluh_persen - $potUndangan - $potonganTidakIkut;
+    $total_bersih = $total_kongan - $sepuluh_persen - $totalPotTidakIkut - $potUndangan;
 
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
@@ -662,25 +630,25 @@ class KegiatanController extends BaseController
     // Style header tabel
     $sheet->getStyle('A8:D8')->getFont()->setBold(true);
     $sheet->getStyle('A8:D8')->getFill()->setFillType(Fill::FILL_SOLID)
-      ->getStartColor()->setARGB('FFE0E0E0');
+        ->getStartColor()->setARGB('FFE0E0E0');
     $sheet->getStyle('A8:D8')->getBorders()->getAllBorders()
-      ->setBorderStyle(Border::BORDER_THIN);
+        ->setBorderStyle(Border::BORDER_THIN);
 
-    // Data kongan (SUDAH TERURUT DARI QUERY)
+    // Data kongan
     $row = 9;
     $no = 1;
     foreach ($kongan as $item) {
-      $sheet->setCellValue('A' . $row, $no++);
-      $sheet->setCellValue('B' . $row, $item['nama_anggota'] ?? 'N/A');
-      $sheet->setCellValue('C' . $row, $item['jumlah'] ?? 0);
-      $sheet->setCellValue('D' . $row, 'Rp ' . number_format($item['jumlah'] ?? 0, 0, ',', '.'));
-      $row++;
+        $sheet->setCellValue('A' . $row, $no++);
+        $sheet->setCellValue('B' . $row, $item['nama_anggota'] ?? 'N/A');
+        $sheet->setCellValue('C' . $row, $item['jumlah'] ?? 0);
+        $sheet->setCellValue('D' . $row, 'Rp ' . number_format($item['jumlah'] ?? 0, 0, ',', '.'));
+        $row++;
     }
 
     // Border untuk data
     if ($row > 9) {
-      $sheet->getStyle('A9:D' . ($row - 1))->getBorders()->getAllBorders()
-        ->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle('A9:D' . ($row - 1))->getBorders()->getAllBorders()
+            ->setBorderStyle(Border::BORDER_THIN);
     }
 
     // Summary
@@ -696,28 +664,23 @@ class KegiatanController extends BaseController
     $sheet->setCellValue('D' . $row, '- Rp ' . number_format($sepuluh_persen, 0, ',', '.'));
 
     $row++;
-    if (!$anggota_aktif_di_kegiatan_lain) {
-      $sheet->setCellValue('B' . $row, 'Potongan Tidak Nulis (0x ikut):');
-      $sheet->setCellValue('D' . $row, '- Rp ' . number_format($potonganTidakIkut, 0, ',', '.'));
-    } else {
-      $sheet->setCellValue('B' . $row, 'Bonus Aktif (' . $jumlah_kegiatan_ikut . 'x ikut):');
-      $sheet->setCellValue('D' . $row, '+ Rp 0');
-    }
+    $sheet->setCellValue('B' . $row, 'Potongan Tidak Ikut Kongan (' . $jumlahTidakIkut . ' x Rp ' . number_format($potTidakIkut, 0, ',', '.') . '):');
+    $sheet->setCellValue('D' . $row, '- Rp ' . number_format($totalPotTidakIkut, 0, ',', '.'));
 
     $row++;
     $sheet->setCellValue('B' . $row, 'Potongan Undangan:');
-    $sheet->setCellValue('D' . $row, '- Rp ' . number_format($potongan_undangan, 0, ',', '.'));
+    $sheet->setCellValue('D' . $row, '- Rp ' . number_format($potUndangan, 0, ',', '.'));
 
     $row++;
     $sheet->setCellValue('B' . $row, 'TOTAL BERSIH:');
     $sheet->setCellValue('D' . $row, 'Rp ' . number_format($total_bersih, 0, ',', '.'));
     $sheet->getStyle('B' . $row . ':D' . $row)->getFont()->setBold(true)->setSize(12);
     $sheet->getStyle('B' . $row . ':D' . $row)->getFill()->setFillType(Fill::FILL_SOLID)
-      ->getStartColor()->setARGB('FFD4E6F1');
+        ->getStartColor()->setARGB('FFD4E6F1');
 
     // Border untuk summary
     $sheet->getStyle('B' . $summaryStartRow . ':D' . $row)->getBorders()->getAllBorders()
-      ->setBorderStyle(Border::BORDER_THIN);
+        ->setBorderStyle(Border::BORDER_THIN);
 
     // Auto width
     $sheet->getColumnDimension('A')->setAutoSize(true);
@@ -1012,6 +975,77 @@ class KegiatanController extends BaseController
     } catch (\Exception $e) {
       log_message('error', 'Error generating template: ' . $e->getMessage());
       return redirect()->back()->with('error', 'Gagal generate template: ' . $e->getMessage());
+    }
+  }
+
+  public function hapusSemaKongan($id_kegiatan)
+  {
+    if (!$this->request->isAJAX()) {
+        return $this->response->setJSON([
+            'success' => false,
+            'message' => 'Request tidak valid'
+        ]);
+    }
+
+    // Validasi admin access
+    if (session()->get('role') !== 'admin') {
+        return $this->response->setJSON([
+            'success' => false,
+            'message' => 'Akses ditolak. Hanya admin yang dapat menghapus semua data kongan.'
+        ]);
+    }
+
+    // Cek apakah kegiatan ada
+    $kegiatan = $this->kegiatanModel->find($id_kegiatan);
+    if (!$kegiatan) {
+        return $this->response->setJSON([
+            'success' => false,
+            'message' => 'Kegiatan tidak ditemukan'
+        ]);
+    }
+
+    try {
+        $db = \Config\Database::connect();
+
+        // Hitung jumlah data kongan yang akan dihapus
+        $totalData = $db->table('kegiatan_detail')
+            ->where('id_kegiatan', $id_kegiatan)
+            ->countAllResults();
+
+        if ($totalData == 0) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Tidak ada data kongan untuk dihapus'
+            ]);
+        }
+
+        // Hapus semua data kongan untuk kegiatan ini
+        $deleted = $db->table('kegiatan_detail')
+            ->where('id_kegiatan', $id_kegiatan)
+            ->delete();
+
+        if ($deleted) {
+            // Log aktivitas
+            log_message('info', 'Admin ' . session()->get('username') . ' menghapus semua data kongan untuk kegiatan ID: ' . $id_kegiatan . ' (Total: ' . $totalData . ' data)');
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Berhasil menghapus ' . $totalData . ' data kongan',
+                'total_deleted' => $totalData
+            ]);
+        } else {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal menghapus data kongan'
+            ]);
+        }
+
+    } catch (\Exception $e) {
+        log_message('error', 'Error hapus semua kongan: ' . $e->getMessage());
+        return $this->response->setJSON([
+            'success' => false,
+            'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+        ]);
     }
   }
 }

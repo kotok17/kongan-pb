@@ -300,9 +300,10 @@
                 </td>
                 <td>
                   <div class="password-field">
-                    <code class="password-display bg-light px-2 py-1 rounded" data-password="Hidden">
-                          ••••••••
-                        </code>
+                    <code class="password-display bg-light px-2 py-1 rounded"
+                      data-password="<?= esc($user['password']) ?>">
+                      ••••••••
+                    </code>
                     <button type="button" class="btn btn-sm btn-link p-0 ms-2 toggle-password"
                       title="Show/Hide Password">
                       <i class="fas fa-eye"></i>
@@ -1276,12 +1277,7 @@ function initializeTogglePassword() {
 
     if (icon.hasClass('fa-eye')) {
       // Show password
-      if (actualPassword !== 'Hidden') {
-        passwordDisplay.text(actualPassword);
-      } else {
-        // Fetch real password via AJAX jika diperlukan
-        passwordDisplay.text('••••••••');
-      }
+      passwordDisplay.text(actualPassword);
       icon.removeClass('fa-eye').addClass('fa-eye-slash');
     } else {
       // Hide password

@@ -53,3 +53,20 @@ Events::on('pre_system', static function (): void {
         }
     }
 });
+
+// Initialize Sentry
+Events::on('post_controller_constructor', function() {
+    $config = new \Config\Sentry();
+    \Sentry\init(['dsn' => $config->dsn]);
+});
+
+// Initialize GlitchTip (Sentry compatible)
+Events::on('post_controller_constructor', function() {
+    if (getenv('SENTRY_DSN')) {
+        \Sentry\init([
+            'dsn' => getenv('SENTRY_DSN'),
+            'environment' => getenv('SENTRY_ENVIRONMENT') ?? 'development',
+            'traces_sample_rate' => 1.0,
+        ]);
+    }
+});

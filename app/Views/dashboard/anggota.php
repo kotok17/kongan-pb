@@ -68,20 +68,6 @@
       </div>
     </div>
   </div>
-
-  <!-- <div class="col-xl-3 col-md-6">
-    <div class="card border-0 shadow-sm h-100 card-hover stats-card">
-      <div class="card-body text-center p-4">
-        <div class="stats-icon bg-info mb-3">
-          <i class="fas fa-money-bill-wave fa-lg text-white"></i>
-        </div>
-        <h3 class="fw-bold text-info mb-1">Rp <span class="counter"
-            data-target="<?= ($total_uang_kongan ?? 0) ?>"><?= number_format($total_uang_kongan ?? 0, 0, ',', '.') ?></span>
-        </h3>
-        <p class="text-muted mb-0 small fw-medium">Total Uang Kongan</p>
-      </div>
-    </div>
-  </div> -->
 </div>
 
 <!-- Kegiatan Timeline untuk Anggota -->
@@ -89,6 +75,14 @@
   <!-- Kegiatan Saya yang Akan Datang -->
   <div class="col-lg-6">
     <div class="card border-0 shadow-sm h-100">
+      <?php
+      $totalBersih  = 0;
+      if (!empty($kegiatan_saya_list)) {
+        foreach ($kegiatan_saya_list as $kegiatan) {
+          $totalBersih += (int)($kegiatan['total_kongan'] ?? 0);
+        }
+      }
+      ?>
       <div class="card-header bg-transparent border-0 pb-0">
         <div class="d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center">
@@ -98,6 +92,10 @@
             <div>
               <h5 class="card-title mb-0 fw-bold">📅 Kegiatan Saya</h5>
               <small class="text-muted">Kegiatan yang saya kelola</small>
+              <!-- Tambahkan total kongan dikelola di sini -->
+              <div class="mt-1 fw-bold text-success">
+                Total Kongan yang didapatkan: Rp <?= number_format($totalBersih, 0, ',', '.') ?>
+              </div>
             </div>
           </div>
           <span class="badge bg-success"><?= count($kegiatan_saya_list ?? []) ?></span>
@@ -134,12 +132,8 @@
                 <span class="fw-medium"><?= date('d M Y', strtotime($kegiatan['tanggal_kegiatan'])) ?></span>
                 <span class="mx-2">•</span>
                 <i class="fas fa-coins me-1"></i>
-                <span><?= $kegiatan['total_kongan'] ?? '0' ?> kongan</span>
+                <span>Rp. <?= number_format($kegiatan['total_kongan'] ?? 0, 0, ',', '.') ?></span>
               </div>
-              <a href="<?= base_url('/kegiatan/detail/' . $kegiatan['id_kegiatan']) ?>"
-                class="btn btn-sm btn-outline-success">
-                <i class="fas fa-eye me-1"></i>Detail
-              </a>
             </div>
           </div>
           <?php endforeach; ?>
@@ -211,20 +205,16 @@
                 <i class="fas fa-user me-1"></i>
                 <span><?= esc($kegiatan['nama_anggota']) ?></span>
               </div>
-              <a href="<?= base_url('/kegiatan/detail/' . $kegiatan['id_kegiatan']) ?>"
-                class="btn btn-sm btn-outline-primary">
-                <i class="fas fa-eye me-1"></i>Detail
-              </a>
             </div>
           </div>
           <?php endforeach; ?>
         </div>
         <?php if (count($kegiatan_terbaru) > 4): ?>
-        <div class="text-center mt-4">
+        <!-- <div class="text-center mt-4">
           <a href="<?= base_url('/kegiatan') ?>" class="btn btn-sm btn-primary px-4">
             Lihat Semua <i class="fas fa-arrow-right ms-2"></i>
           </a>
-        </div>
+        </div> -->
         <?php endif; ?>
         <?php else: ?>
         <div class="text-center text-muted py-5">
@@ -235,6 +225,57 @@
           </div>
         </div>
         <?php endif; ?>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- History Kongan yang Diikuti -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-primary text-white fw-bold">
+        <i class="fas fa-history me-2"></i>History Kongan yang Anda Ikuti
+      </div>
+      <div class="card-body">
+        <?php
+          $totalKonganHistory = 0;
+          foreach ($history_kongan as $row) {
+            $totalKonganHistory += $row['jumlah'];
+          }
+        ?>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover" id="historyKonganTable">
+            <thead class="table-light">
+              <tr>
+                <th>No</th>
+                <th>Nama Kegiatan</th>
+                <th>Tanggal</th>
+                <th>Pemilik Kegiatan</th>
+                <th class="text-end">Jumlah Kongan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php
+              $no = 1;
+              foreach ($history_kongan as $row): ?>
+              <tr>
+                <td><?= $no++ ?></td>
+                <td><?= esc($row['nama_kegiatan']) ?></td>
+                <td><?= date('d M Y', strtotime($row['tanggal_kegiatan'])) ?></td>
+                <td><?= esc($row['pemilik_kegiatan']) ?></td>
+                <td class="text-end">Rp <?= number_format($row['jumlah'], 0, ',', '.') ?></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="4" class="text-end">Total Kongan</th>
+                <th class="text-end">Rp <?= number_format($totalKonganHistory, 0, ',', '.') ?></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -491,6 +532,22 @@
 </style>
 
 <script>
+$(document).ready(function() {
+  $('#historyKonganTable').DataTable({
+    language: {
+      url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
+    },
+    pageLength: 10,
+    lengthMenu: [5, 10, 25, 50, 100],
+    order: [
+      [0, 'asc']
+    ],
+    columnDefs: [{
+      targets: [0, 4],
+      className: 'text-end'
+    }]
+  });
+});
 // Counter Animation
 function animateCounters() {
   const counters = document.querySelectorAll('.counter');

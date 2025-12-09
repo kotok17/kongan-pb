@@ -6,6 +6,13 @@ use CodeIgniter\Router\RouteCollection;
  * @var RouteCollection $routes
  */
 
+$routes->get('chatbot', function () {
+    echo view('chat_ui');
+});
+
+// API Chat OpenAI
+$routes->post('/chatbot/ask', 'ChatbotController::ask');
+
 // Test route untuk debugging
 $routes->get('test', function () {
   echo "<h1>Routing Test Works!</h1>";
@@ -87,6 +94,15 @@ $routes->get('api/dashboard/stats', 'DashboardController::getStats');
 
 // User management routes (admin only)
 $routes->group('users', ['filter' => 'auth'], function ($routes) {
+  $routes->get('/', 'UserController::index');
+  $routes->get('tambah', 'UserController::tambah');
+  $routes->post('simpan', 'UserController::simpan');
+  $routes->get('edit/(:num)', 'UserController::edit/$1');
+  $routes->post('update/(:num)', 'UserController::update/$1');
   $routes->post('reset-password/(:num)', 'UserController::resetPassword/$1');
   $routes->delete('delete/(:num)', 'UserController::delete/$1');
 });
+
+// Route baru untuk menghapus semua kongan
+$routes->post('kegiatan/hapus_semua_kongan/(:num)', 'KegiatanController::hapusSemaKongan/$1');
+$routes->delete('kegiatan/hapus_semua_kongan/(:num)', 'KegiatanController::hapusSemaKongan/$1');

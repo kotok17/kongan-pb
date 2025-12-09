@@ -53,6 +53,57 @@ class UserController extends BaseController
     }
   }
 
+  public function edit($id)
+  {
+      // Cek akses admin
+      if (session()->get('role') !== 'admin') {
+          return redirect()->to('/dashboard')->with('error', 'Akses ditolak!');
+      }
+
+      $user = $this->userModel->find($id);
+      if (!$user) {
+          return redirect()->to('/dashboard')->with('error', 'User tidak ditemukan!');
+      }
+
+      return view('user/edit_user', [
+          'user' => $user
+      ]);
+  }
+
+  public function update($id_user)
+  {
+      if (session()->get('role') !== 'admin') {
+          return redirect()->to('/dashboard')->with('error', 'Akses ditolak!');
+      }
+
+      $user = $this->userModel->find($id_user);
+      if (!$user) {
+          return redirect()->to('/dashboard')->with('error', 'User tidak ditemukan!');
+      }
+
+      // Ambil username dari POST, jika kosong pakai username lama
+      $username = $this->request->getPost('username');
+      if (empty($username)) {
+          $username = $user['username'];
+      }
+
+      $data = [
+          'username' => $username,
+          'role'     => $this->request->getPost('role')
+      ];
+
+      $password = $this->request->getPost('password');
+      if (!empty($password)) {
+          $data['password'] = password_hash($password, PASSWORD_DEFAULT);
+      }
+
+      if ($this->userModel->update($id_user, $data)) {
+          return redirect()->to('/dashboard/admin')->with('success', 'User berhasil diupdate!');
+      } else {
+          return redirect()->back()->with('error', 'Gagal update user! ' . json_encode($this->userModel->errors()));
+      }
+  }
+
   public function delete($id)
   {
     if (session()->get('role') !== 'admin') {

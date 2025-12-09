@@ -108,7 +108,6 @@ class DashboardController extends BaseController
       ->where('kegiatan.tanggal_kegiatan', date('Y-m-d'))
       ->findAll();
 
-    // TAMBAHKAN QUERY UNTUK USERS
     // Ambil semua users dengan data anggota
     $users = $userModel
       ->select('users.*, anggota.nama_anggota')
@@ -162,6 +161,20 @@ class DashboardController extends BaseController
       return redirect()->to('/login')->with('error', 'Silakan login sebagai anggota');
     }
 
+    // Ambil history kongan yang diikuti user
+    $idAnggota = session()->get('id_anggota');
+    $db = \Config\Database::connect();
+    $historyKongan = $db->table('kegiatan_detail kd')
+        ->select('k.nama_kegiatan, k.tanggal_kegiatan, kd.jumlah, a.nama_anggota as pemilik_kegiatan')
+        ->join('kegiatan k', 'k.id_kegiatan = kd.id_kegiatan')
+        ->join('anggota a', 'a.id_anggota = k.id_anggota')
+        ->where('kd.id_anggota', $idAnggota)
+        ->orderBy('k.tanggal_kegiatan', 'DESC')
+        ->get()
+        ->getResultArray();
+
+    $data['history_kongan'] = $historyKongan;
+    
     $kegiatanModel = new KegiatanModel();
     $idAnggota = session()->get('id_anggota');
 
@@ -172,9 +185,61 @@ class DashboardController extends BaseController
 
     // 2. Kegiatan yang dibuat oleh anggota ini
     $kegiatanSayaList = $kegiatanModel
-      ->where('id_anggota', $idAnggota)
-      ->orderBy('tanggal_kegiatan', 'DESC')
-      ->findAll();
+    ->select('kegiatan.*, anggota.nama_anggota, 
+              COUNT(kegiatan_detail.id_detail_kegiatan) as total_peserta,
+              COALESCE(SUM(kegiatan_detail.jumlah), 0) as total_kongan')
+    ->join('anggota', 'anggota.id_anggota = kegiatan.id_anggota')
+    ->join('kegiatan_detail', 'kegiatan_detail.id_kegiatan = kegiatan.id_kegiatan', 'left')
+    ->where('kegiatan.id_anggota', $idAnggota)
+    ->groupBy('kegiatan.id_kegiatan')
+    ->orderBy('kegiatan.tanggal_kegiatan', 'DESC')
+    ->findAll();
+    // \dd($kegiatanSayaList);
+
+      // Hitung total kongan yang didapatkan dari semua kegiatan yang dikelola user
+      $totalKonganDikelola = 0;
+      foreach ($kegiatanSayaList as $kegiatan) {
+          $totalKonganDikelola += (int)($kegiatan['total_kongan'] ?? 0);
+      }
+
+      // HITUNG TOTAL KONGAN DILIHAT DARI KEGIATAN YANG DIIKUTI
+      $totalKonganDikelolaBersih = 0;
+      foreach ($kegiatanSayaList as $kegiatan) {
+          // Ambil total kongan (sudah didapat dari query: $kegiatan['total_kongan'])
+          $total_kongan = (int)($kegiatan['total_kongan'] ?? 0);
+
+          // 10% operasional
+          $sepuluh_persen = $total_kongan * 0.10;
+
+          // Potongan undangan
+          $potongan_undangan = (int)($kegiatan['potongan_undangan_amount'] ?? 0);
+
+          // Potongan tidak ikut
+          $potTidakIkut = (int)($kegiatan['potongan_tidak_ikut_amount'] ?? 0);
+
+          // Hitung total kegiatan di sistem
+          $totalKegiatan = $kegiatanModel->countAllResults();
+
+          // Hitung kegiatan yang diikuti oleh pemilik kegiatan ini
+          $kegiatanDiikuti = $kegiatanModel->db->table('kegiatan_detail')
+              ->where('id_anggota', $kegiatan['id_anggota'])
+              ->distinct()
+              ->select('id_kegiatan')
+              ->countAllResults();
+
+          // Hitung jumlah tidak ikut
+          $jumlahTidakIkut = $totalKegiatan - $kegiatanDiikuti;
+          $totalPotTidakIkut = $jumlahTidakIkut * $potTidakIkut;
+
+          // Hitung total bersih
+          $total_bersih = $total_kongan - $sepuluh_persen - $potongan_undangan - $totalPotTidakIkut;
+
+          $totalBersih = $total_bersih;
+      }
+
+      $data['kegiatan_saya_list'] = $kegiatanSayaList;
+      $data['totalKonganDikelola'] = $totalKonganDikelola;
+      $data['totalBersih'] = $totalBersih;
 
     // 3. Total kongan yang diberikan oleh anggota ini
     $totalKonganQuery = $kegiatanModel->db->query(
@@ -221,7 +286,11 @@ class DashboardController extends BaseController
       // DATA KEGIATAN
       'kegiatan_saya_list' => $kegiatanSayaList,
       'kegiatan_diikuti' => $kegiatanDiikuti,
-      'kegiatan_terbaru' => $kegiatanTerbaru
+      'kegiatan_terbaru' => $kegiatanTerbaru,
+      'history_kongan' => $historyKongan,
+
+      // DATA KONGAN DIKELOLA
+      'totalBersih' => $totalBersih
     ];
 
     return view('dashboard/anggota', $data);
