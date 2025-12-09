@@ -1,0 +1,16 @@
+version: 1
+
+# Build: install dependency
+buildCommand: "composer install --no-dev --optimize-autoloader"
+
+# Start: jalankan PHP built-in server di port yang dikasih Render
+startCommand: "php -S 0.0.0.0:$PORT -t public/"
+
+# Services
+services:
+  - type: web
+    name: ci4-app
+    env: php
+    region: singapore
+    plan: free
+    autoDeploy: true
